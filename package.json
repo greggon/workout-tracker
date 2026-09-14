@@ -44,6 +44,7 @@
 		"vitest": "^4.1.8"
 	},
 	"dependencies": {
-		"better-sqlite3": "^13.0.2"
+		"better-sqlite3": "^13.0.2",
+		"jose": "^6.2.12"
 	}
 }

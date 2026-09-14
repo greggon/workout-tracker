@@ -19,6 +19,7 @@ import {
 	type DayKey,
 	type Tool
 } from '../src/lib/server/db/schema';
+import { displayNameFor } from '../src/lib/server/users';
 
 const DATABASE_URL = process.env.DATABASE_URL ?? 'local.db';
 const FORCE = process.argv.includes('--force');
@@ -28,16 +29,6 @@ const FORCE = process.argv.includes('--force');
 // claim in the Cloudflare Access JWT to resolve to an account at runtime.
 const PRIMARY_EMAIL = process.env.SEED_EMAIL ?? 'you@example.com';
 const FRIEND_EMAIL = process.env.SEED_FRIEND_EMAIL ?? 'friend@example.com';
-
-/** "ada.lovelace@x.com" → "Ada Lovelace" */
-function displayNameFor(email: string): string {
-	return email
-		.split('@')[0]
-		.split(/[._-]+/)
-		.filter(Boolean)
-		.map((part) => part[0].toUpperCase() + part.slice(1))
-		.join(' ');
-}
 
 const DAY_MS = 86_400_000;
 
