@@ -52,6 +52,47 @@ drizzle/        Generated migrations
 `$env/dynamic/private` can only run inside Vite, which would make the seed
 script and any future CLI tooling unrunnable.
 
+## Deploy
+
+Runs on a Raspberry Pi 4B behind Cloudflare Access at
+`https://workout.goncharov.app`.
+
+GitHub Actions builds on native `ubuntu-24.04-arm` runners — no QEMU, no
+cross-compilation — after a `verify` job runs lint, check and tests, so a red
+suite never becomes the image the Pi pulls. The image is pushed to
+`ghcr.io/greggon/workout-tracker:latest`.
+
+On the Pi, in `~/apps/workout/`, place `docker-compose.yml` and a `.env` holding
+`CF_ACCESS_TEAM_DOMAIN` and `CF_ACCESS_AUD`, then:
+
+```sh
+mkdir -p data
+docker compose pull && docker compose up -d
+```
+
+From here, `pnpm deploy` does the pull and restart over SSH.
+
+The container joins the external `edge` network and publishes **no ports**.
+`cloudflared` reaches it as `http://workout-tracker:3000`, which is also the
+service URL in the tunnel's published application route. Nothing on the LAN can
+reach the app, so the only way in is through Access.
+
+Migrations are applied at boot by drizzle-orm's migrator, before the server
+accepts a request. A failure crashes the container rather than serving queries
+against a stale schema. `drizzle-kit` is a devDependency and is pruned from the
+image, so the CLI is not available there — the generated SQL in `drizzle/` is
+what ships.
+
+### Environment
+
+| Variable                |                                                                                                                                                                    |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `DATABASE_URL`          | Path to the SQLite file. `/data/workout.db` in the container.                                                                                                      |
+| `ORIGIN`                | Public URL. **Required** — `adapter-node` uses it for SvelteKit's CSRF origin check, and without it every `POST` is rejected with a 403 while `GET`s keep working. |
+| `CF_ACCESS_TEAM_DOMAIN` | Account-wide, shared with other apps on the same Cloudflare account.                                                                                               |
+| `CF_ACCESS_AUD`         | Per-application. Must be this app's own tag — reusing another app's would make the two accept each other's tokens.                                                 |
+| `AUTH_DEV_EMAIL`        | Local only. Read only when `dev` is true, so it is absent from a production build.                                                                                 |
+
 ## Schema notes
 
 - **History is keyed by `movement_id`, never by name.** Renaming an exercise

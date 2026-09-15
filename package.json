@@ -18,7 +18,8 @@
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
 		"db:studio": "drizzle-kit studio",
-		"db:seed": "tsx scripts/seed.ts"
+		"db:seed": "tsx scripts/seed.ts",
+		"deploy": "ssh greggon@pi4 'cd ~/apps/workout && docker compose pull && docker compose up -d'"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
@@ -28,7 +29,6 @@
 		"@types/better-sqlite3": "^7.6.13",
 		"@types/node": "^24",
 		"drizzle-kit": "^0.31.10",
-		"drizzle-orm": "^0.45.2",
 		"eslint": "^10.4.1",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.19.0",
@@ -45,6 +45,8 @@
 	},
 	"dependencies": {
 		"better-sqlite3": "^13.0.2",
+		"drizzle-orm": "^0.45.2",
 		"jose": "^6.2.12"
-	}
+	},
+	"packageManager": "pnpm@11.24.0"
 }

@@ -1,0 +1,23 @@
+services:
+  workout-tracker:
+    image: ghcr.io/greggon/workout-tracker:latest
+    # cloudflared resolves this name on the `edge` network; it is also the
+    # service URL in the tunnel's published application route.
+    container_name: workout-tracker
+    environment:
+      CF_ACCESS_TEAM_DOMAIN: ${CF_ACCESS_TEAM_DOMAIN}
+      CF_ACCESS_AUD: ${CF_ACCESS_AUD}
+      # Required. adapter-node uses this for SvelteKit's CSRF origin check —
+      # unset, every POST is rejected with a 403 while GETs keep working.
+      ORIGIN: https://workout.goncharov.app
+      DATABASE_URL: /data/workout.db
+    volumes:
+      - ./data:/data
+    # No `ports:` on purpose. Nothing on the LAN can reach this; the only way
+    # in is cloudflared, which means the only way in is through Access.
+    networks: [edge]
+    restart: unless-stopped
+
+networks:
+  edge:
+    external: true

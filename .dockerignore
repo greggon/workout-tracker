@@ -1,0 +1,11 @@
+# .dockerignore
+node_modules
+.svelte-kit
+build
+.git
+.github
+.env
+data
+*.db
+*.db-shm
+*.db-wal
