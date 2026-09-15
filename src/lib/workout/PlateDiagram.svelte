@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { describeLoading, loadingLabel, type LoadingConfig } from '$lib/plates';
-	import type { Tool } from '$lib/types';
+	import { describeLoading, loadingLabel, plateColors, type LoadingConfig } from '$lib/plates';
+	import { DEFAULT_PLATE_COLOR, type Tool } from '$lib/types';
 
 	type Props = { tool: Tool; weight: number; config: LoadingConfig };
 	let { tool, weight, config }: Props = $props();
@@ -18,21 +18,24 @@
 		return { h: 10 + p * 0.62, w: p >= 35 ? 6 : p >= 10 ? 5 : 3.5 };
 	}
 
+	const colors = $derived(plateColors(config.inventory));
+
 	/**
 	 * Lays plates outward from a collar. A two-sleeve bar mirrors the same stack
 	 * on both sides; a landmine or machine loads one end, so only the right-hand
 	 * run is drawn and the other end sits bare.
 	 */
 	function sleeve(plates: number[], sleeves: number) {
-		const out: { x: number; y: number; w: number; h: number }[] = [];
+		const out: { x: number; y: number; w: number; h: number; fill: string }[] = [];
 		let lx = 44;
 		let rx = 76;
 		for (const p of plates) {
 			const { h, w } = size(p);
-			out.push({ x: rx, y: AXIS - h / 2, w, h });
+			const fill = colors.get(p) ?? DEFAULT_PLATE_COLOR;
+			out.push({ x: rx, y: AXIS - h / 2, w, h, fill });
 			rx += w + 1.5;
 			if (sleeves === 2) {
-				out.push({ x: lx - w, y: AXIS - h / 2, w, h });
+				out.push({ x: lx - w, y: AXIS - h / 2, w, h, fill });
 				lx -= w + 1.5;
 			}
 		}
@@ -62,8 +65,8 @@
 	{:else if loading.kind === 'fixed'}
 		<!-- A fixed dumbbell: one solid object, nothing to hang. -->
 		<rect class="ink" x="52" y="20" width="16" height="3" rx="1.5" />
-		<rect class="plate" x="42" y="12" width="10" height="19" rx="2" />
-		<rect class="plate" x="68" y="12" width="10" height="19" rx="2" />
+		<rect class="plate fixed-bell" x="42" y="12" width="10" height="19" rx="2" />
+		<rect class="plate fixed-bell" x="68" y="12" width="10" height="19" rx="2" />
 	{:else}
 		<rect class="ink" x="6" y="20" width="108" height="3" rx="1.5" />
 		<rect class="ink" x="72" y="16" width="4" height="11" rx="1.5" />
@@ -71,7 +74,21 @@
 			<rect class="ink" x="44" y="16" width="4" height="11" rx="1.5" />
 		{/if}
 		{#each drawn as p, i (i)}
-			<rect class="plate" x={p.x} y={p.y} width={p.w} height={p.h} rx="1.5" />
+			<!--
+				The colour goes in as a custom property, not a `fill` attribute.
+				An SVG presentation attribute loses to any CSS rule, so the
+				`.plate` rule below would quietly override every per-plate fill —
+				which is exactly what it did.
+			-->
+			<rect
+				class="plate"
+				style:--plate-fill={p.fill}
+				x={p.x}
+				y={p.y}
+				width={p.w}
+				height={p.h}
+				rx="1.5"
+			/>
 		{/each}
 	{/if}
 </svg>
@@ -91,11 +108,32 @@
 		stroke-width: 2;
 		stroke-linecap: round;
 	}
+	/*
+	 * Every plate carries a hairline edge. Without it a black plate — the
+	 * default, and what most iron actually is — disappears against the dark
+	 * theme's near-black ground.
+	 *
+	 * The fill comes from --plate-fill, set per rect. Shapes with no plate
+	 * behind them (the bodyweight belt, the fixed dumbbell) set nothing and
+	 * fall back to the accent.
+	 */
 	.plate {
+		fill: var(--plate-fill, var(--color-accent-500));
+		stroke: var(--plate-edge);
+		stroke-width: 0.6;
+	}
+	.diagram {
+		--plate-edge: color-mix(in srgb, var(--color-text) 55%, transparent);
+	}
+	/* A fixed dumbbell has no plates to colour, so it keeps the accent. */
+	.fixed-bell {
 		fill: var(--color-accent-500);
+		stroke: none;
 	}
 	/* A load the plates cannot actually make is drawn in outline, so the
-	   diagram itself says "this is not what you will end up with". */
+	   diagram itself says "this is not what you will end up with". The accent
+	   is used rather than the plate's own colour: a black outline would be the
+	   one state you cannot see. */
 	.short .plate {
 		fill: none;
 		stroke: var(--color-accent-500);

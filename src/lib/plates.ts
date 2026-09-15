@@ -1,4 +1,4 @@
-import { TOOL_SPEC, type PlateStock, type Tool } from './types';
+import { DEFAULT_PLATE_COLOR, parseHexColor, TOOL_SPEC, type PlateStock, type Tool } from './types';
 
 /**
  * How a prescribed weight is actually loaded on the equipment you own.
@@ -54,30 +54,46 @@ export type PlateFill = {
  * before counts existed still loads.
  */
 export function normalizeStock(raw: unknown): PlateStock[] {
-	const merged = new Map<number, number>();
+	const merged = new Map<number, { count: number; color: string }>();
 
 	for (const item of Array.isArray(raw) ? raw : []) {
 		let weight: number;
 		let count: number;
+		let color = DEFAULT_PLATE_COLOR;
 
 		if (typeof item === 'number') {
 			weight = item;
 			count = LEGACY_COUNT;
 		} else if (item && typeof item === 'object') {
-			weight = Number((item as PlateStock).weight);
-			count = Math.floor(Number((item as PlateStock).count));
+			const row = item as Partial<PlateStock>;
+			weight = Number(row.weight);
+			count = Math.floor(Number(row.count));
+			// Inventories saved before colours existed simply have none.
+			color = parseHexColor(row.color) ?? DEFAULT_PLATE_COLOR;
 		} else {
 			continue;
 		}
 
 		if (!Number.isFinite(weight) || weight <= 0) continue;
 		if (!Number.isFinite(count) || count <= 0) continue;
-		merged.set(weight, (merged.get(weight) ?? 0) + count);
+
+		const existing = merged.get(weight);
+		// Merging duplicates keeps the first colour seen rather than the last,
+		// so the top entry in the settings table is the one that wins.
+		merged.set(weight, {
+			count: (existing?.count ?? 0) + count,
+			color: existing?.color ?? color
+		});
 	}
 
 	return [...merged]
-		.map(([weight, count]) => ({ weight, count }))
+		.map(([weight, { count, color }]) => ({ weight, count, color }))
 		.sort((a, b) => b.weight - a.weight);
+}
+
+/** Denomination → colour, for drawing a fill that has already been chosen. */
+export function plateColors(inventory: PlateStock[]): Map<number, string> {
+	return new Map(normalizeStock(inventory).map((s) => [s.weight, s.color]));
 }
 
 /**
@@ -88,7 +104,7 @@ export function normalizeStock(raw: unknown): PlateStock[] {
 export function perSideStock(inventory: PlateStock[], sleeves: number): PlateStock[] {
 	if (sleeves <= 0) return [];
 	return normalizeStock(inventory)
-		.map(({ weight, count }) => ({ weight, count: Math.floor(count / sleeves) }))
+		.map(({ weight, count, color }) => ({ weight, color, count: Math.floor(count / sleeves) }))
 		.filter((s) => s.count > 0);
 }
 

@@ -1,7 +1,14 @@
 <script lang="ts">
 	import { describeStock, loadingLabel, normalizeStock, perSideStock } from '$lib/plates';
 	import PlateDiagram from '$lib/workout/PlateDiagram.svelte';
-	import { TOOLS, TOOL_LABELS, TOOL_SPEC, type PlateStock, type Tool } from '$lib/types';
+	import {
+		DEFAULT_PLATE_COLOR,
+		TOOLS,
+		TOOL_LABELS,
+		TOOL_SPEC,
+		type PlateStock,
+		type Tool
+	} from '$lib/types';
 
 	let { data, form } = $props();
 
@@ -23,11 +30,26 @@
 	const perSide = $derived(perSideStock(rows, TOOL_SPEC.barbell.sleeves));
 
 	function addRow() {
-		rows = [...rows, { weight: 0, count: 2 }];
+		rows = [...rows, { weight: 0, count: 2, color: DEFAULT_PLATE_COLOR }];
 	}
 	function removeRow(i: number) {
 		rows = rows.filter((_, idx) => idx !== i);
 	}
+
+	/**
+	 * Replaces a row rather than mutating one.
+	 *
+	 * `rows` is a writable `$derived` over plain objects, so assigning to
+	 * `row.color` changes the object without producing a signal: the preview and
+	 * the per-sleeve column would both keep showing the values from before the
+	 * edit. Assigning to `rows` is what makes the change visible.
+	 */
+	function update(i: number, patch: Partial<PlateStock>) {
+		rows = rows.map((row, idx) => (idx === i ? { ...row, ...patch } : row));
+	}
+
+	/** A cleared number field is empty, not zero — do not render NaN into it. */
+	const shown = (value: number) => (Number.isFinite(value) ? value : '');
 </script>
 
 <svelte:head>
@@ -75,7 +97,8 @@
 	<h6 class="label">Plates you own</h6>
 	<p class="text-muted hint">
 		Count the whole pile, not per side. A barbell splits it in two; a landmine or a machine loads
-		one end, so the whole pile is available to it.
+		one end, so the whole pile is available to it. Colours are how the plates look in your gym — the
+		loading diagrams use them, so a stack is recognisable before you read the numbers.
 	</p>
 
 	<input type="hidden" name="rows" value={rows.length} />
@@ -83,6 +106,7 @@
 		<li class="plates-head">
 			<span>Weight</span>
 			<span>Own</span>
+			<span>Colour</span>
 			<span class="per">Per sleeve</span>
 			<span></span>
 		</li>
@@ -95,7 +119,8 @@
 					min="0"
 					inputmode="decimal"
 					name="weight-{i}"
-					bind:value={row.weight}
+					value={shown(row.weight)}
+					oninput={(e) => update(i, { weight: e.currentTarget.valueAsNumber })}
 					aria-label="Plate weight"
 				/>
 				<input
@@ -105,9 +130,20 @@
 					min="0"
 					inputmode="numeric"
 					name="count-{i}"
-					bind:value={row.count}
+					value={shown(row.count)}
+					oninput={(e) => update(i, { count: e.currentTarget.valueAsNumber })}
 					aria-label="How many you own"
 				/>
+				<span class="swatch-wrap">
+					<input
+						class="swatch"
+						type="color"
+						name="color-{i}"
+						value={row.color}
+						oninput={(e) => update(i, { color: e.currentTarget.value })}
+						aria-label="Colour of the {row.weight} lb plates"
+					/>
+				</span>
 				<span class="per num">{Math.floor((Number(row.count) || 0) / 2) || '—'}</span>
 				<button type="button" class="btn btn-ghost drop" onclick={() => removeRow(i)}>Remove</button
 				>
@@ -222,7 +258,8 @@
 	.plates-head,
 	.plate-row {
 		display: grid;
-		grid-template-columns: 1fr 1fr 78px auto;
+		/* weight · own · colour · per sleeve · remove */
+		grid-template-columns: 1fr 1fr 44px 78px auto;
 		gap: 8px;
 		align-items: center;
 	}

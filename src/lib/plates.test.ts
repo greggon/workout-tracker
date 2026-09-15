@@ -7,13 +7,21 @@ import {
 	loadingLabel,
 	normalizeStock,
 	perSideStock,
+	plateColors,
 	type LoadingConfig
 } from './plates';
-import { TOOL_SPEC, type PlateStock } from './types';
+import { DEFAULT_PLATE_COLOR, TOOL_SPEC, type PlateStock } from './types';
 
 /** Plenty of everything — what the design assumed. */
 const many = (...weights: number[]): PlateStock[] =>
-	weights.map((weight) => ({ weight, count: 20 }));
+	weights.map((weight) => ({ weight, count: 20, color: DEFAULT_PLATE_COLOR }));
+
+/** A plate row with the default colour, for the count-focused tests. */
+const plate = (weight: number, count: number, color = DEFAULT_PLATE_COLOR): PlateStock => ({
+	weight,
+	count,
+	color
+});
 
 const RACK: LoadingConfig = {
 	barWeight: 45,
@@ -33,16 +41,16 @@ const HOME: LoadingConfig = {
 	barWeight: 45,
 	ezBarWeight: 30,
 	inventory: [
-		{ weight: 45, count: 6 },
-		{ weight: 35, count: 2 },
-		{ weight: 25, count: 4 },
-		{ weight: 10, count: 4 },
-		{ weight: 5, count: 3 },
-		{ weight: 2.5, count: 4 },
-		{ weight: 1, count: 4 },
-		{ weight: 0.75, count: 4 },
-		{ weight: 0.5, count: 4 },
-		{ weight: 0.25, count: 4 }
+		plate(45, 6),
+		plate(35, 2),
+		plate(25, 4),
+		plate(10, 4),
+		plate(5, 3),
+		plate(2.5, 4),
+		plate(1, 4),
+		plate(0.75, 4),
+		plate(0.5, 4),
+		plate(0.25, 4)
 	]
 };
 
@@ -53,41 +61,35 @@ describe('normalizeStock', () => {
 	it('sorts heaviest first, merges duplicates, and drops junk', () => {
 		expect(
 			normalizeStock([
-				{ weight: 10, count: 2 },
-				{ weight: 45, count: 6 },
-				{ weight: 10, count: 2 },
-				{ weight: 0, count: 4 },
-				{ weight: 25, count: 0 },
+				plate(10, 2),
+				plate(45, 6),
+				plate(10, 2),
+				plate(0, 4),
+				plate(25, 0),
 				{ weight: -5, count: 2 },
 				'nonsense'
 			])
-		).toEqual([
-			{ weight: 45, count: 6 },
-			{ weight: 10, count: 4 }
-		]);
+		).toEqual([plate(45, 6), plate(10, 4)]);
 	});
 
 	it('reads accounts saved before counts existed', () => {
 		// Bare numbers meant "commercial rack"; they must not become a pair.
-		expect(normalizeStock([45, 25])).toEqual([
-			{ weight: 45, count: 10 },
-			{ weight: 25, count: 10 }
-		]);
+		expect(normalizeStock([45, 25])).toEqual([plate(45, 10), plate(25, 10)]);
 	});
 });
 
 describe('perSideStock', () => {
 	it('halves the pile for a two-sleeve bar', () => {
-		expect(perSideStock([{ weight: 45, count: 6 }], 2)).toEqual([{ weight: 45, count: 3 }]);
+		expect(perSideStock([plate(45, 6)], 2)).toEqual([plate(45, 3)]);
 	});
 
 	it('leaves the whole pile to a single-sleeve tool', () => {
 		// A landmine or a machine loads one end, so nothing is held back.
-		expect(perSideStock([{ weight: 45, count: 6 }], 1)).toEqual([{ weight: 45, count: 6 }]);
+		expect(perSideStock([plate(45, 6)], 1)).toEqual([plate(45, 6)]);
 	});
 
 	it('drops a denomination you own an odd single of', () => {
-		expect(perSideStock([{ weight: 35, count: 1 }], 2)).toEqual([]);
+		expect(perSideStock([plate(35, 1)], 2)).toEqual([]);
 	});
 });
 
@@ -125,7 +127,7 @@ describe('fillPlates', () => {
 	it('matches an independently computed optimum at every quarter pound', () => {
 		// The implementation reduces by the gcd and reconstructs from a pick
 		// table; either step could be subtly wrong without this cross-check.
-		const unlimited = HOME.inventory.map((s) => ({ weight: s.weight, count: 999 }));
+		const unlimited = HOME.inventory.map((s) => ({ ...s, count: 999 }));
 		const units = unlimited.map((s) => Math.round(s.weight * 4));
 		const LIMIT = 4 * 120;
 		const best = new Array<number>(LIMIT + 1).fill(Infinity);
@@ -259,15 +261,49 @@ describe('a home gym runs out', () => {
 
 describe('describeStock', () => {
 	it('summarises the rack', () => {
-		expect(
-			describeStock([
-				{ weight: 2.5, count: 4 },
-				{ weight: 45, count: 6 }
-			])
-		).toBe('45×6, 2.5×4');
+		expect(describeStock([plate(2.5, 4), plate(45, 6)])).toBe('45×6, 2.5×4');
 	});
 
 	it('says so when the rack is empty', () => {
 		expect(describeStock([])).toBe('nothing yet');
+	});
+});
+
+describe('plate colours', () => {
+	it('defaults to plain iron when none is given', () => {
+		expect(normalizeStock([{ weight: 45, count: 2 }])).toEqual([
+			{ weight: 45, count: 2, color: DEFAULT_PLATE_COLOR }
+		]);
+	});
+
+	it('keeps a colour that was chosen', () => {
+		expect(normalizeStock([{ weight: 1, count: 4, color: '#c0392b' }])[0].color).toBe('#c0392b');
+	});
+
+	it('accepts shorthand hex and normalises it', () => {
+		expect(normalizeStock([{ weight: 1, count: 4, color: '#F00' }])[0].color).toBe('#ff0000');
+		expect(normalizeStock([{ weight: 1, count: 4, color: '  #C0392B ' }])[0].color).toBe('#c0392b');
+	});
+
+	it('refuses anything that is not a hex colour', () => {
+		// This value is written straight into an SVG fill, so "red" and
+		// "url(#x)" alike fall back to iron rather than reaching the DOM.
+		for (const bad of ['red', 'url(#evil)', 'rgb(1,2,3)', '#12', '', 42, null]) {
+			expect(normalizeStock([{ weight: 1, count: 4, color: bad }])[0].color).toBe(
+				DEFAULT_PLATE_COLOR
+			);
+		}
+	});
+
+	it('exposes a weight-to-colour map for the diagrams', () => {
+		const colors = plateColors([plate(45, 2), plate(1, 4, '#c0392b')]);
+		expect(colors.get(45)).toBe(DEFAULT_PLATE_COLOR);
+		expect(colors.get(1)).toBe('#c0392b');
+		expect(colors.get(999)).toBeUndefined();
+	});
+
+	it('keeps the first colour when a denomination is listed twice', () => {
+		const merged = normalizeStock([plate(5, 2, '#00ff00'), plate(5, 2, '#0000ff')]);
+		expect(merged).toEqual([{ weight: 5, count: 4, color: '#00ff00' }]);
 	});
 });

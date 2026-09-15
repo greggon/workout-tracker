@@ -115,11 +115,34 @@ export const MIN_SPLIT = 2;
 export const MAX_SPLIT = 5;
 
 /**
- * A denomination and how many of that plate you own — the whole pile, not a
- * per-side figure. A home gym runs out, and a fill that assumes otherwise sends
- * you looking for a fourth 35 you do not have.
+ * A denomination, how many of that plate you own — the whole pile, not a
+ * per-side figure — and what colour it is.
+ *
+ * The colour is not decoration. At the rack you recognise a plate by its look
+ * before you read the number stamped on it, so a diagram drawn in your actual
+ * plate colours is quicker to act on than an accurate but uniform one.
  */
-export type PlateStock = { weight: number; count: number };
+export type PlateStock = { weight: number; count: number; color: string };
+
+/** Plain iron. What a plate is unless you say otherwise. */
+export const DEFAULT_PLATE_COLOR = '#000000';
+
+/**
+ * Normalises a colour to `#rrggbb`, or returns null if it is not one.
+ *
+ * Deliberately strict: this value is written straight into an SVG `fill`, and
+ * anything that is not a plain hex colour has no business being there.
+ */
+export function parseHexColor(value: unknown): string | null {
+	if (typeof value !== 'string') return null;
+	const hex = value.trim().toLowerCase();
+	if (/^#[0-9a-f]{6}$/.test(hex)) return hex;
+	// #abc is the same colour as #aabbcc.
+	if (/^#[0-9a-f]{3}$/.test(hex)) {
+		return `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`;
+	}
+	return null;
+}
 
 /**
  * The gym everyone using this app actually trains in. A default is a guess, and
@@ -131,14 +154,14 @@ export type PlateStock = { weight: number; count: number };
  * account starts with.
  */
 export const DEFAULT_PLATE_STOCK: PlateStock[] = [
-	{ weight: 45, count: 6 },
-	{ weight: 35, count: 2 },
-	{ weight: 25, count: 4 },
-	{ weight: 10, count: 4 },
-	{ weight: 5, count: 3 },
-	{ weight: 2.5, count: 4 },
-	{ weight: 1, count: 4 },
-	{ weight: 0.75, count: 4 },
-	{ weight: 0.5, count: 4 },
-	{ weight: 0.25, count: 4 }
+	{ weight: 45, count: 6, color: DEFAULT_PLATE_COLOR },
+	{ weight: 35, count: 2, color: DEFAULT_PLATE_COLOR },
+	{ weight: 25, count: 4, color: DEFAULT_PLATE_COLOR },
+	{ weight: 10, count: 4, color: DEFAULT_PLATE_COLOR },
+	{ weight: 5, count: 3, color: DEFAULT_PLATE_COLOR },
+	{ weight: 2.5, count: 4, color: DEFAULT_PLATE_COLOR },
+	{ weight: 1, count: 4, color: DEFAULT_PLATE_COLOR },
+	{ weight: 0.75, count: 4, color: DEFAULT_PLATE_COLOR },
+	{ weight: 0.5, count: 4, color: DEFAULT_PLATE_COLOR },
+	{ weight: 0.25, count: 4, color: DEFAULT_PLATE_COLOR }
 ];

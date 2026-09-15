@@ -207,6 +207,36 @@ body {
 	-webkit-font-smoothing: antialiased;
 	/* Stops iOS rubber-banding revealing white behind the app in standalone. */
 	overscroll-behavior-y: none;
+
+	/*
+	 * Installed, this is an app rather than a document. Long-pressing a label
+	 * should not select it, raise a text-selection toolbar, or offer to search
+	 * Google for "Close grip bench" — and mid-set, with chalky hands, a
+	 * mis-registered tap that selects a word is pure friction.
+	 *
+	 * Selection is switched back on below for the places it is the point.
+	 */
+	-webkit-user-select: none;
+	user-select: none;
+	/* The iOS long-press callout; Android's menu is governed by user-select. */
+	-webkit-touch-callout: none;
+	/* The grey box Android paints over whatever you touch. Replaced by the
+	   :active states below, which are ours to design. */
+	-webkit-tap-highlight-color: transparent;
+}
+
+/*
+ * Anything you type in has to be selectable, or you cannot place a caret or
+ * fix a typo. `.selectable` is the opt-in for content worth copying — a weight
+ * out of the history table, say.
+ */
+input,
+textarea,
+select,
+[contenteditable='true'],
+.selectable {
+	-webkit-user-select: text;
+	user-select: text;
 }
 
 h1,
@@ -314,6 +344,17 @@ img {
 .btn:disabled {
 	opacity: 0.45;
 	cursor: not-allowed;
+}
+/* Stands in for the tap highlight we just removed: on touch there is no hover,
+   so without this a press gives no feedback at all. */
+.btn:active:not(:disabled) {
+	transform: scale(0.97);
+}
+@media (prefers-reduced-motion: reduce) {
+	.btn:active:not(:disabled) {
+		transform: none;
+		filter: brightness(1.2);
+	}
 }
 .btn-primary {
 	background: var(--color-accent-800);
