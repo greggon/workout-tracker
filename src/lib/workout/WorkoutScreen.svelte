@@ -9,6 +9,9 @@
 		type SessionExercise
 	} from '$lib/workout/session.svelte';
 	import type { LoadingConfig } from '$lib/plates';
+	import type { SessionSummary as SummaryView } from '$lib/server/sessions';
+	import type { SessionInput } from '$lib/session-payload';
+	import SessionSummary from './SessionSummary.svelte';
 	import { useChrome } from '$lib/shell/chrome.svelte';
 	import { setVolume, formatVolume, formatMinutes } from '$lib/volume';
 
@@ -92,13 +95,95 @@
 		};
 	});
 
+	let summary = $state<SummaryView | null>(null);
+	let syncError = $state<string | null>(null);
+	let saving = $state(false);
+
+	/** Everything logged, in the shape the API accepts. */
+	function buildPayload(): SessionInput {
+		const logs: SessionInput['logs'] = [];
+		session.exercises.forEach((exercise, exerciseIndex) => {
+			movementsOf(exercise).forEach((movement, slot) => {
+				for (let setIndex = 0; setIndex < exercise.sets; setIndex++) {
+					const reps = session.reps(exerciseIndex, setIndex, slot);
+					if (reps == null) continue;
+					logs.push({
+						dayExerciseId: exercise.id,
+						movementId: movement.movementId,
+						exerciseIndex,
+						setIndex,
+						slot,
+						tool: movement.tool,
+						weight: movement.weight,
+						reps,
+						loggedAt: session.lastAt
+					});
+				}
+			});
+		});
+		return {
+			id: session.id,
+			dayId: day.id,
+			startedAt: session.startedAt,
+			endedAt: session.finishedAt ?? Date.now(),
+			logs
+		};
+	}
+
+	/**
+	 * Commits the workout. The session id was minted at the start, so a retry
+	 * upserts rather than duplicating.
+	 *
+	 * A lapsed Access session is answered by Cloudflare with a redirect that
+	 * fetch follows, so a 200 carrying HTML is an auth failure rather than a
+	 * success — checking the content type is the only way to tell from here.
+	 */
+	async function commit() {
+		if (saving) return;
+		saving = true;
+		syncError = null;
+
+		try {
+			const response = await fetch('/api/sessions', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(buildPayload())
+			});
+
+			const contentType = response.headers.get('content-type') ?? '';
+			if (!contentType.includes('application/json')) {
+				syncError =
+					'Signed out while you were training. The workout is still on this device — sign in again and it will save.';
+				return;
+			}
+
+			const body = await response.json();
+			if (!response.ok) {
+				syncError = `Could not save: ${body.error ?? response.status}`;
+				return;
+			}
+			summary = body.summary as SummaryView;
+		} catch {
+			syncError =
+				'No connection, so this is not saved yet. Keep this screen open until you are back online.';
+		} finally {
+			saving = false;
+		}
+	}
+
+	function finish() {
+		if (session.finishedAt) return;
+		session.finish();
+		void commit();
+	}
+
 	/** Advance past a finished exercise, and end the day when none are left. */
 	function afterLog(index: number) {
 		if (!session.isExerciseDone(index)) return;
 
 		const next = session.nextUnfinished(index);
 		if (next === null) {
-			setTimeout(() => session.finish(), 450);
+			setTimeout(finish, 450);
 			return;
 		}
 		session.active = next;
@@ -130,37 +215,34 @@
 </script>
 
 {#if session.finishedAt}
-	<section class="done">
-		<div class="kicker">Day complete</div>
-		<h2>{day.key} day, done</h2>
-		<p class="text-muted sub">
-			Logged {session.loggedCount} of {session.totalSlots} sets in {formatMinutes(
-				session.durationMins
-			)}.
-		</p>
-
-		<ul class="stats">
-			<li class="stat">
-				<div class="stat-label">Volume</div>
-				<div class="stat-value num">{formatVolume(loggedVolume)} lb</div>
-			</li>
-			<li class="stat">
-				<div class="stat-label">Time</div>
-				<div class="stat-value num">{formatMinutes(session.durationMins)}</div>
-			</li>
-			<li class="stat">
-				<div class="stat-label">Sets</div>
-				<div class="stat-value num">{session.loggedCount}</div>
-			</li>
-		</ul>
-
-		<p class="notice">
-			Not saved yet — sessions start reaching the database in the next step. This screen becomes the
-			real summary then.
-		</p>
-
-		<a class="btn btn-primary" href={resolve('/')}>Back to my days</a>
-	</section>
+	{#if summary}
+		<SessionSummary {summary} {syncError} />
+	{:else}
+		<section class="pending">
+			<div class="kicker">{day.key} day complete</div>
+			<h2>{saving ? 'Saving…' : 'Not saved'}</h2>
+			<p class="text-muted sub">
+				{syncError ?? 'Sending this workout to the server.'}
+			</p>
+			<ul class="stats">
+				<li>
+					<div class="stat-label">Volume</div>
+					<div class="stat-value num">{formatVolume(loggedVolume)} lb</div>
+				</li>
+				<li>
+					<div class="stat-label">Time</div>
+					<div class="stat-value num">{formatMinutes(session.durationMins)}</div>
+				</li>
+				<li>
+					<div class="stat-label">Sets</div>
+					<div class="stat-value num">{session.loggedCount}</div>
+				</li>
+			</ul>
+			{#if syncError}
+				<button class="btn btn-primary" onclick={commit} disabled={saving}>Try again</button>
+			{/if}
+		</section>
+	{/if}
 {:else}
 	<div class="head">
 		<h2>{day.key} day</h2>
@@ -182,7 +264,9 @@
 	</ul>
 
 	<div class="actions">
-		<button class="btn btn-primary" onclick={() => session.finish()}>Finish workout</button>
+		<button class="btn btn-primary" onclick={finish} disabled={saving}>
+			{saving ? 'Saving…' : 'Finish workout'}
+		</button>
 		<a class="btn btn-secondary" href={resolve('/')}>Quit without saving</a>
 	</div>
 {/if}
@@ -225,7 +309,7 @@
 		text-decoration: none;
 	}
 
-	.done {
+	.pending {
 		padding-top: 30px;
 	}
 	.kicker {
@@ -235,7 +319,7 @@
 		color: var(--color-accent);
 		margin-bottom: 6px;
 	}
-	.done h2 {
+	.pending h2 {
 		font-size: 40px;
 		letter-spacing: -0.03em;
 		margin-bottom: 8px;
@@ -260,14 +344,5 @@
 		font-family: var(--font-heading);
 		font-size: 28px;
 		line-height: 1.15;
-	}
-	.notice {
-		font-size: 12.5px;
-		color: var(--color-neutral-400);
-		background: var(--color-neutral-900);
-		border-radius: var(--radius-md);
-		padding: var(--space-3) var(--space-4);
-		margin-bottom: 22px;
-		max-width: 52ch;
 	}
 </style>
