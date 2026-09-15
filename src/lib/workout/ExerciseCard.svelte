@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { page } from '$app/state';
+	import { resolve } from '$app/paths';
 	import { loadingLabel, type LoadingConfig } from '$lib/plates';
 	import { TOOL_SPEC } from '$lib/types';
 	import { formatWeight } from '$lib/volume';
@@ -85,6 +87,14 @@
 								{loadingLabel(movement.tool, movement.weight, config)}
 							</div>
 						</div>
+						<a
+							class="btn btn-ghost history"
+							href="{resolve('/movements/[id]', {
+								id: movement.movementId
+							})}?back={encodeURIComponent(page.url.pathname)}"
+						>
+							History
+						</a>
 					</div>
 				{/each}
 			</div>
@@ -262,6 +272,14 @@
 	.load-setup {
 		font-size: 11px;
 		color: var(--color-neutral-500);
+	}
+	/* Safe to leave mid-workout: the session is on the device, and coming back
+	   restores it exactly where it was. */
+	.history {
+		flex: none;
+		margin-left: auto;
+		font-size: 11.5px;
+		text-decoration: none;
 	}
 
 	.sets {

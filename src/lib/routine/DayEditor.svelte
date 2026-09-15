@@ -145,6 +145,16 @@
 						>
 					</div>
 					<span class="index num">{i + 1}</span>
+					{#if row.id}
+						<a
+							class="btn btn-ghost history"
+							href="{resolve('/movements/[id]', {
+								id: day.exercises.find((e) => e.id === row.id)?.main.movementId ?? ''
+							})}?back={encodeURIComponent(resolve('/routine'))}"
+						>
+							History
+						</a>
+					{/if}
 					<button type="button" class="btn btn-ghost remove" onclick={() => removeRow(i)}>
 						Remove
 					</button>
@@ -354,6 +364,10 @@
 	.remove {
 		font-size: 12px;
 		color: var(--color-neutral-400);
+	}
+	.history {
+		font-size: 12px;
+		text-decoration: none;
 	}
 
 	.movement,
