@@ -18,7 +18,7 @@
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
 		"db:studio": "drizzle-kit studio",
-		"db:seed": "tsx scripts/seed.ts",
+		"db:seed": "tsx --env-file-if-exists=.env scripts/seed.ts",
 		"deploy": "ssh greggon@pi4 'cd ~/apps/workout && docker compose pull && docker compose up -d'"
 	},
 	"devDependencies": {

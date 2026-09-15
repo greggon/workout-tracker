@@ -1,17 +1,13 @@
 import { sql } from 'drizzle-orm';
 import { index, integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import type { DayKey, Tool } from '../../types';
 
 /**
  * All weights are stored in pounds. Both accounts lift in lbs, so there is no
  * canonical-unit conversion layer anywhere in this schema — see the build spec.
  */
 
-export const TOOLS = ['barbell', 'dumbbell', 'machine', 'pulley'] as const;
-export type Tool = (typeof TOOLS)[number];
-
-/** Day letters, in rotation order. The split is 2–5 days, so A–E. */
-export const DAY_KEYS = ['A', 'B', 'C', 'D', 'E'] as const;
-export type DayKey = (typeof DAY_KEYS)[number];
+export type { Tool, DayKey } from '../../types';
 
 const id = () =>
 	text('id')

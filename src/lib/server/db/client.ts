@@ -25,3 +25,13 @@ export function createDb(url: string) {
 }
 
 export type Db = ReturnType<typeof createDb>;
+
+/** The handle drizzle hands to a `db.transaction()` callback. */
+export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
+
+/**
+ * Anything that can run a query. Helpers take this so they compose inside a
+ * transaction as well as standalone — a plain `Db` is not assignable from a
+ * transaction, and casting between them hides real mistakes.
+ */
+export type Queryable = Db | Tx;
