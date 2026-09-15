@@ -49,6 +49,40 @@
 
 	/** Null until the saved session has been checked, so nothing is overwritten. */
 	let restored = $state(false);
+	/** Set while abandoning, so nothing writes the session back out. */
+	let quitting = $state(false);
+
+	/**
+	 * Quitting is irreversible — the snapshot goes with it — and the button sits
+	 * next to "Finish workout". So once anything has been logged it takes two
+	 * taps, with the count of what is about to be lost written on it.
+	 *
+	 * It disarms on its own after a few seconds, and immediately if another set
+	 * is logged: carrying on training is the clearest possible statement that
+	 * the first tap was a mistake.
+	 */
+	const QUIT_CONFIRM_MS = 5000;
+	let confirmQuit = $state(false);
+	let confirmTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function disarmQuit() {
+		confirmQuit = false;
+		if (confirmTimer !== null) clearTimeout(confirmTimer);
+		confirmTimer = null;
+	}
+
+	function pressQuit() {
+		if (session.loggedCount === 0 || confirmQuit) {
+			disarmQuit();
+			void quit();
+			return;
+		}
+		confirmQuit = true;
+		if (confirmTimer !== null) clearTimeout(confirmTimer);
+		confirmTimer = setTimeout(() => (confirmQuit = false), QUIT_CONFIRM_MS);
+	}
+
+	$effect(() => disarmQuit);
 
 	/**
 	 * Picks up an interrupted workout. A refresh, a phone call, or iOS
@@ -76,7 +110,7 @@
 	 * right after a set is logged.
 	 */
 	$effect(() => {
-		if (!restored || session.finishedAt) return;
+		if (!restored || quitting || session.finishedAt) return;
 		const snapshot = {
 			sessionId: session.id,
 			dayId: day.id,
@@ -217,6 +251,20 @@
 		}
 	}
 
+	/**
+	 * Throws the workout away.
+	 *
+	 * The snapshot in IndexedDB has to go with it. Leaving it behind meant
+	 * coming back to this day silently resumed the abandoned session — same
+	 * logged sets, and a session clock still counting from whenever you first
+	 * started it.
+	 */
+	async function quit() {
+		quitting = true;
+		await clearLive(store);
+		await goto(resolve('/'));
+	}
+
 	function finish() {
 		if (session.finishedAt) return;
 		session.finish();
@@ -225,6 +273,8 @@
 
 	/** Advance past a finished exercise, and end the day when none are left. */
 	function afterLog(index: number) {
+		// Still training, so the pending discard was not meant.
+		disarmQuit();
 		if (!session.isExerciseDone(index)) return;
 
 		const next = session.nextUnfinished(index);
@@ -316,7 +366,19 @@
 		<button class="btn btn-primary" onclick={finish} disabled={saving}>
 			{saving ? 'Saving…' : 'Finish workout'}
 		</button>
-		<a class="btn btn-secondary" href={resolve('/')}>Quit without saving</a>
+		<button
+			class="btn btn-secondary"
+			class:danger={confirmQuit}
+			type="button"
+			onclick={pressQuit}
+			disabled={quitting}
+		>
+			{#if confirmQuit}
+				Discard {session.loggedCount} set{session.loggedCount === 1 ? '' : 's'}?
+			{:else}
+				Quit without saving
+			{/if}
+		</button>
 	</div>
 {/if}
 
@@ -356,6 +418,11 @@
 	}
 	.actions .btn {
 		text-decoration: none;
+	}
+	.danger {
+		color: var(--color-danger);
+		background: var(--color-danger-bg);
+		border-color: var(--color-danger);
 	}
 
 	.pending {

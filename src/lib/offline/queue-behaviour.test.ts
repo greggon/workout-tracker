@@ -241,6 +241,25 @@ describe('the workout in progress', () => {
 		await clearLive(store);
 		expect(await loadLive(store, 'day-b')).toBeNull();
 	});
+
+	it('is gone after quitting, so the next attempt starts fresh', async () => {
+		await saveLive(store, snapshot);
+
+		// Quitting without saving discards the snapshot as well as the session.
+		// Leaving it meant returning to the day resumed the abandoned workout,
+		// with a session clock still counting from the original start.
+		await clearLive(store);
+
+		const resumed = await loadLive(store, 'day-b');
+		expect(resumed).toBeNull();
+	});
+
+	it('does not resurrect a quit session on a different day either', async () => {
+		await saveLive(store, snapshot);
+		await clearLive(store);
+		expect(await loadLive(store, 'day-a')).toBeNull();
+		expect(await loadLive(store, 'day-b')).toBeNull();
+	});
 });
 
 describe('memoryStore', () => {
