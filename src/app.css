@@ -55,6 +55,12 @@
 	--color-danger: #f28b82;
 	--color-danger-bg: #3a2027;
 
+	/* How a surface looks while your thumb is on it. A filter is used rather
+	   than a background so it composes with whatever the element already
+	   has, and — unlike the platform's tap highlight — it is clipped by the
+	   element's own border-radius. */
+	--press: brightness(1.28);
+
 	/*
 	 * The header block's ground. Deliberately NOT swapped in light mode: it is
 	 * the one surface that stays deep indigo in both themes, which is what
@@ -148,6 +154,12 @@
 		--color-danger: #b3261e;
 		--color-danger-bg: #fce8e6;
 
+		/* How a surface looks while your thumb is on it. A filter is used rather
+		   than a background so it composes with whatever the element already
+		   has, and — unlike the platform's tap highlight — it is clipped by the
+		   element's own border-radius. */
+		--press: brightness(0.95);
+
 		--shadow-sm: 0 1px 2px rgba(27, 29, 42, 0.07), 0 2px 8px rgba(27, 29, 42, 0.05);
 		--shadow-md: 0 2px 6px rgba(27, 29, 42, 0.08), 0 8px 22px rgba(27, 29, 42, 0.08);
 		--shadow-lg: 0 6px 16px rgba(27, 29, 42, 0.1), 0 20px 48px rgba(27, 29, 42, 0.12);
@@ -192,6 +204,12 @@
 	--color-danger: #b3261e;
 	--color-danger-bg: #fce8e6;
 
+	/* How a surface looks while your thumb is on it. A filter is used rather
+	   than a background so it composes with whatever the element already
+	   has, and — unlike the platform's tap highlight — it is clipped by the
+	   element's own border-radius. */
+	--press: brightness(0.95);
+
 	--shadow-sm: 0 1px 2px rgba(27, 29, 42, 0.07), 0 2px 8px rgba(27, 29, 42, 0.05);
 	--shadow-md: 0 2px 6px rgba(27, 29, 42, 0.08), 0 8px 22px rgba(27, 29, 42, 0.08);
 	--shadow-lg: 0 6px 16px rgba(27, 29, 42, 0.1), 0 20px 48px rgba(27, 29, 42, 0.12);
@@ -205,6 +223,11 @@
 
 html {
 	background: var(--color-bg);
+	/* Also set on body and on every interactive element below. This property is
+	   supposed to inherit, but has historically been unreliable about it across
+	   Android WebView builds, and a stray grey rectangle is exactly what it
+	   looks like when it does not. */
+	-webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -360,6 +383,36 @@ img {
    so without this a press gives no feedback at all. */
 .btn:active:not(:disabled) {
 	transform: scale(0.97);
+}
+
+/*
+ * Press feedback for everything else you can tap — rows, cards, tabs, links.
+ *
+ * The platform highlight is a rectangle: it ignores border-radius entirely, so
+ * on a 22px card it paints corners that are not there. Killing it left those
+ * surfaces with no feedback at all, which is worse. A filter is the replacement
+ * because it applies to the element as rendered, so it is the element's shape
+ * by construction — there is no second rectangle to keep in sync.
+ *
+ * Touch only: pointer devices have hover states already.
+ */
+@media (hover: none) {
+	a,
+	button,
+	summary,
+	label,
+	[role='button'],
+	.pressable {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	a:active,
+	button:not(:disabled):active,
+	summary:active,
+	[role='button']:active,
+	.pressable:active {
+		filter: var(--press);
+	}
 }
 @media (prefers-reduced-motion: reduce) {
 	.btn:active:not(:disabled) {
