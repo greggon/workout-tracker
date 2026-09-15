@@ -80,7 +80,9 @@
 			<div class="loads">
 				{#each movements as movement (movement.movementId)}
 					<div class="load">
-						<PlateDiagram tool={movement.tool} weight={movement.weight} {config} />
+						<span class="art">
+							<PlateDiagram tool={movement.tool} weight={movement.weight} {config} />
+						</span>
 						<div class="load-text">
 							<div class="load-name">{movement.name}</div>
 							<div class="load-setup num">
@@ -260,8 +262,20 @@
 	.load {
 		display: flex;
 		align-items: center;
-		gap: 12px;
+		flex-wrap: wrap;
+		gap: 8px 12px;
 		min-width: 0;
+	}
+	/* The diagram is fluid, so it needs a slot to sit in. At phone width it
+	   takes the whole row rather than squeezing the movement name to nothing. */
+	.art {
+		flex: 0 0 160px;
+		max-width: 100%;
+	}
+	@media (max-width: 420px) {
+		.art {
+			flex-basis: 100%;
+		}
 	}
 	.load-text {
 		min-width: 0;

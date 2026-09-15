@@ -193,7 +193,9 @@
 					</label>
 
 					<div class="load">
-						<PlateDiagram tool={row.tool} weight={row.weight} config={loading} />
+						<span class="art">
+							<PlateDiagram tool={row.tool} weight={row.weight} config={loading} />
+						</span>
 						<span class="load-text num">{loadingLabel(row.tool, row.weight, loading)}</span>
 					</div>
 				</div>
@@ -232,7 +234,9 @@
 						</label>
 
 						<div class="load">
-							<PlateDiagram tool={row.pairTool} weight={row.pairWeight} config={loading} />
+							<span class="art">
+								<PlateDiagram tool={row.pairTool} weight={row.pairWeight} config={loading} />
+							</span>
 							<span class="load-text num"
 								>{loadingLabel(row.pairTool, row.pairWeight, loading)}</span
 							>
@@ -386,8 +390,18 @@
 		flex: 1 1 100%;
 		display: flex;
 		align-items: center;
-		gap: 10px;
+		flex-wrap: wrap;
+		gap: 6px 10px;
 		min-width: 0;
+	}
+	.art {
+		flex: 0 0 160px;
+		max-width: 100%;
+	}
+	@media (max-width: 420px) {
+		.art {
+			flex-basis: 100%;
+		}
 	}
 	.load-text {
 		font-size: 11.5px;

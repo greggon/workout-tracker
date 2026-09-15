@@ -188,7 +188,9 @@
 
 {#if usable}
 	<div class="preview">
-		<PlateDiagram tool={sampleTool} weight={Number(sampleWeight) || 0} {config} />
+		<span class="art">
+			<PlateDiagram tool={sampleTool} weight={Number(sampleWeight) || 0} {config} />
+		</span>
 		<span class="num preview-text"
 			>{loadingLabel(sampleTool, Number(sampleWeight) || 0, config)}</span
 		>
@@ -285,11 +287,23 @@
 	.preview {
 		display: flex;
 		align-items: center;
-		gap: 14px;
+		flex-wrap: wrap;
+		gap: 10px 14px;
 		background: var(--color-surface);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-lg);
 		box-shadow: var(--shadow-sm);
-		padding: 12px 14px;
+		padding: 14px;
+	}
+	/* Roomier here than in a list: this is the drawing you study while you are
+	   deciding what colour a plate is. */
+	.art {
+		flex: 0 0 190px;
+		max-width: 100%;
+	}
+	@media (max-width: 420px) {
+		.art {
+			flex-basis: 100%;
+		}
 	}
 	.preview-text {
 		font-size: 12.5px;

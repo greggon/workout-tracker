@@ -1,93 +1,91 @@
 <script lang="ts">
 	import { describeLoading, loadingLabel, plateColors, type LoadingConfig } from '$lib/plates';
 	import { DEFAULT_PLATE_COLOR, type Tool } from '$lib/types';
+	import { MAX_GLYPH_HEIGHT, plateGlyph } from './plate-glyph';
 
 	type Props = { tool: Tool; weight: number; config: LoadingConfig };
 	let { tool, weight, config }: Props = $props();
 
-	const W = 120;
-	const H = 43;
-	/** Vertical centre of the bar. */
-	const AXIS = 21.5;
+	/**
+	 * One sleeve, drawn large.
+	 *
+	 * A barbell and a pulley load symmetrically, so mirroring the stack told you
+	 * nothing the label did not already say ("per side") while costing half the
+	 * width. Showing a single sleeve spends that width on plates big enough to
+	 * tell apart at arm's length, mid-set.
+	 */
+
+	/** Tall enough for the heaviest plate, with a little air above and below. */
+	const H = MAX_GLYPH_HEIGHT + 6;
+	/** Vertical centre of the shaft. */
+	const AXIS = H / 2;
+	/** Where the first plate sits, just past the collar. */
+	const FIRST = 50;
+	const GAP = 2;
+	/** Keeps a light load from rendering as a tiny drawing. */
+	const MIN_W = 170;
 
 	const loading = $derived(describeLoading(tool, weight, config));
 	const label = $derived(loadingLabel(tool, weight, config));
-
-	/** Plate thickness and height scale with denomination. */
-	function size(p: number) {
-		return { h: 10 + p * 0.62, w: p >= 35 ? 6 : p >= 10 ? 5 : 3.5 };
-	}
-
 	const colors = $derived(plateColors(config.inventory));
 
-	/**
-	 * Lays plates outward from a collar. A two-sleeve bar mirrors the same stack
-	 * on both sides; a landmine or machine loads one end, so only the right-hand
-	 * run is drawn and the other end sits bare.
-	 */
-	function sleeve(plates: number[], sleeves: number) {
+	const stack = $derived.by(() => {
+		if (loading.kind !== 'loaded') return [];
 		const out: { x: number; y: number; w: number; h: number; fill: string }[] = [];
-		let lx = 44;
-		let rx = 76;
-		for (const p of plates) {
-			const { h, w } = size(p);
-			const fill = colors.get(p) ?? DEFAULT_PLATE_COLOR;
-			out.push({ x: rx, y: AXIS - h / 2, w, h, fill });
-			rx += w + 1.5;
-			if (sleeves === 2) {
-				out.push({ x: lx - w, y: AXIS - h / 2, w, h, fill });
-				lx -= w + 1.5;
-			}
+		let x = FIRST;
+		for (const p of loading.plates) {
+			const { h, w } = plateGlyph(p);
+			out.push({ x, y: AXIS - h / 2, w, h, fill: colors.get(p) ?? DEFAULT_PLATE_COLOR });
+			x += w + GAP;
 		}
 		return out;
-	}
+	});
 
-	const drawn = $derived(loading.kind === 'loaded' ? sleeve(loading.plates, loading.sleeves) : []);
+	/** Grows if a load needs more room than the base width, rather than clipping. */
+	const W = $derived(
+		stack.length === 0
+			? MIN_W
+			: Math.max(MIN_W, stack[stack.length - 1].x + stack[stack.length - 1].w + 12)
+	);
+
 	const short = $derived(loading.kind === 'loaded' && loading.remainder > 0);
 </script>
 
-<svg
-	viewBox="0 0 {W} {H}"
-	width={W}
-	height={H}
-	role="img"
-	aria-label={label}
-	class="diagram"
-	class:short
->
+<svg viewBox="0 0 {W} {H}" role="img" aria-label={label} class="diagram" class:short>
 	{#if loading.kind === 'bodyweight'}
 		<!-- Nothing to load: a figure, not an implement. -->
-		<circle class="ink" cx="60" cy="10" r="5" />
-		<path class="stroke" d="M60 15 v13 M60 19 l-9 -5 M60 19 l9 -5 M60 28 l-7 11 M60 28 l7 11" />
+		<circle class="ink" cx={W / 2} cy="13" r="7" />
+		<path
+			class="stroke"
+			d="M{W / 2} 21 v18 M{W / 2} 26 l-12 -6 M{W / 2} 26 l12 -6 M{W / 2} 39 l-9 15 M{W /
+				2} 39 l9 15"
+		/>
 		{#if loading.added > 0}
-			<rect class="plate" x="52" y="20" width="16" height="6" rx="1.5" />
+			<rect class="plate" x={W / 2 - 13} y="27" width="26" height="9" rx="2" />
 		{/if}
 	{:else if loading.kind === 'fixed'}
 		<!-- A fixed dumbbell: one solid object, nothing to hang. -->
-		<rect class="ink" x="52" y="20" width="16" height="3" rx="1.5" />
-		<rect class="plate fixed-bell" x="42" y="12" width="10" height="19" rx="2" />
-		<rect class="plate fixed-bell" x="68" y="12" width="10" height="19" rx="2" />
+		<rect class="ink" x={W / 2 - 14} y={AXIS - 3} width="28" height="6" rx="3" />
+		<rect class="plate fixed-bell" x={W / 2 - 30} y={AXIS - 17} width="16" height="34" rx="4" />
+		<rect class="plate fixed-bell" x={W / 2 + 14} y={AXIS - 17} width="16" height="34" rx="4" />
 	{:else}
-		<rect class="ink" x="6" y="20" width="108" height="3" rx="1.5" />
-		<rect class="ink" x="72" y="16" width="4" height="11" rx="1.5" />
-		{#if loading.sleeves === 2}
-			<rect class="ink" x="44" y="16" width="4" height="11" rx="1.5" />
-		{/if}
-		{#each drawn as p, i (i)}
+		<!-- The shaft runs off the left edge: what you see is the loading end. -->
+		<rect class="ink" x="0" y={AXIS - 3} width="46" height="6" rx="3" />
+		<rect class="ink" x="41" y={AXIS - 12} width="6" height="24" rx="2" />
+		{#each stack as plate, i (i)}
 			<!--
 				The colour goes in as a custom property, not a `fill` attribute.
 				An SVG presentation attribute loses to any CSS rule, so the
-				`.plate` rule below would quietly override every per-plate fill —
-				which is exactly what it did.
+				`.plate` rule below would quietly override every per-plate fill.
 			-->
 			<rect
 				class="plate"
-				style:--plate-fill={p.fill}
-				x={p.x}
-				y={p.y}
-				width={p.w}
-				height={p.h}
-				rx="1.5"
+				style:--plate-fill={plate.fill}
+				x={plate.x}
+				y={plate.y}
+				width={plate.w}
+				height={plate.h}
+				rx="2"
 			/>
 		{/each}
 	{/if}
@@ -96,8 +94,10 @@
 <style>
 	.diagram {
 		display: block;
-		max-width: 100%;
+		width: 100%;
+		max-width: 190px;
 		height: auto;
+		--plate-edge: color-mix(in srgb, var(--color-text) 55%, transparent);
 	}
 	.ink {
 		fill: var(--color-neutral-400);
@@ -105,7 +105,7 @@
 	.stroke {
 		fill: none;
 		stroke: var(--color-neutral-400);
-		stroke-width: 2;
+		stroke-width: 3;
 		stroke-linecap: round;
 	}
 	/*
@@ -120,12 +120,8 @@
 	.plate {
 		fill: var(--plate-fill, var(--color-accent-500));
 		stroke: var(--plate-edge);
-		stroke-width: 0.6;
+		stroke-width: 0.8;
 	}
-	.diagram {
-		--plate-edge: color-mix(in srgb, var(--color-text) 55%, transparent);
-	}
-	/* A fixed dumbbell has no plates to colour, so it keeps the accent. */
 	.fixed-bell {
 		fill: var(--color-accent-500);
 		stroke: none;
@@ -137,6 +133,6 @@
 	.short .plate {
 		fill: none;
 		stroke: var(--color-accent-500);
-		stroke-width: 1;
+		stroke-width: 1.4;
 	}
 </style>
