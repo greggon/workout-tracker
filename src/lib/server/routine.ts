@@ -215,3 +215,39 @@ function withVolume(
 
 	return rows.map((r) => ({ ...r, volume: volumes.get(r.id) ?? 0 }));
 }
+
+export type LastLog = { weight: number; reps: number; loggedAt: Date };
+
+/**
+ * The most recent logged set for each movement, across this account's history.
+ *
+ * Drives the "Last time · 115 lb × 8" hint on the workout screen. Queried per
+ * movement so the `set_logs(movement_id, logged_at)` index does the work and a
+ * movement untouched for a year is still found.
+ */
+export function lastLogPerMovement(
+	db: Db,
+	userId: string,
+	movementIds: string[]
+): Map<string, LastLog> {
+	const found = new Map<string, LastLog>();
+
+	for (const movementId of new Set(movementIds)) {
+		const row = db
+			.select({
+				weight: setLogs.weight,
+				reps: setLogs.reps,
+				loggedAt: setLogs.loggedAt
+			})
+			.from(setLogs)
+			.innerJoin(sessions, eq(sessions.id, setLogs.sessionId))
+			.where(and(eq(sessions.userId, userId), eq(setLogs.movementId, movementId)))
+			.orderBy(desc(setLogs.loggedAt))
+			.limit(1)
+			.get();
+
+		if (row) found.set(movementId, row);
+	}
+
+	return found;
+}

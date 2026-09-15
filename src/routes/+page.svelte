@@ -54,7 +54,7 @@
 		{#each data.days as day, i (day.id)}
 			{@const isNext = i === 0}
 			<li class="day" class:next={isNext}>
-				<a class="day-main" href={resolve('/')}>
+				<a class="day-main" href={resolve('/workout/[id]', { id: day.id })}>
 					<span class="badge" class:badge-next={isNext}>{day.key}</span>
 					<span class="day-text">
 						<span class="day-title-row">
