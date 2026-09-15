@@ -1,4 +1,4 @@
-# Liftup
+# Workout Tracker
 
 A weightlifting routine tracker: A/B/C day rotation, superset-aware set logging,
 plate-loading diagrams, and per-movement history. Self-hosted on a Raspberry Pi,

@@ -61,7 +61,7 @@ function authRequired(reason: string): Response {
 		status: 401,
 		headers: {
 			'content-type': 'application/json',
-			'x-liftup-auth': 'required',
+			'x-workout-auth': 'required',
 			'cache-control': 'no-store'
 		}
 	});

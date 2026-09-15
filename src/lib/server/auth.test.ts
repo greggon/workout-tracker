@@ -9,7 +9,7 @@ import { AuthError, accessCertsUrl, accessIssuer, verifyAccessToken } from './au
  * nothing about the part that actually matters.
  */
 
-const ISSUER = 'https://liftup.cloudflareaccess.com';
+const ISSUER = 'https://testteam.cloudflareaccess.com';
 const AUD = 'a'.repeat(64);
 
 let keys: JWTVerifyGetKey;
@@ -57,13 +57,13 @@ async function reasonFor(token: string | null | undefined): Promise<string> {
 
 describe('accessIssuer', () => {
 	it('expands a bare team name', () => {
-		expect(accessIssuer('liftup')).toBe('https://liftup.cloudflareaccess.com');
+		expect(accessIssuer('testteam')).toBe('https://testteam.cloudflareaccess.com');
 	});
 
 	it('accepts a full domain or URL, with or without trailing slash', () => {
-		expect(accessIssuer('liftup.cloudflareaccess.com')).toBe(ISSUER);
-		expect(accessIssuer('https://liftup.cloudflareaccess.com/')).toBe(ISSUER);
-		expect(accessIssuer('  liftup.cloudflareaccess.com  ')).toBe(ISSUER);
+		expect(accessIssuer('testteam.cloudflareaccess.com')).toBe(ISSUER);
+		expect(accessIssuer('https://testteam.cloudflareaccess.com/')).toBe(ISSUER);
+		expect(accessIssuer('  testteam.cloudflareaccess.com  ')).toBe(ISSUER);
 	});
 
 	it('rejects an empty team domain rather than building a bogus issuer', () => {
@@ -71,7 +71,7 @@ describe('accessIssuer', () => {
 	});
 
 	it('points at the team certs endpoint', () => {
-		expect(accessCertsUrl('liftup').toString()).toBe(`${ISSUER}/cdn-cgi/access/certs`);
+		expect(accessCertsUrl('testteam').toString()).toBe(`${ISSUER}/cdn-cgi/access/certs`);
 	});
 });
 

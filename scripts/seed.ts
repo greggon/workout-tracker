@@ -1,5 +1,5 @@
 /**
- * Development seed: loads the routine from the Liftup design plus four weeks of
+ * Development seed: loads the routine from the Claude Design mockup plus four weeks of
  * back-dated history, for two isolated accounts.
  *
  *   pnpm db:seed             # refuses if sessions already exist
