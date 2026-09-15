@@ -3,8 +3,32 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import Header from '$lib/shell/Header.svelte';
 	import { provideChrome } from '$lib/shell/chrome.svelte';
+	import { provideOffline } from '$lib/offline/context.svelte';
+	import SyncBanner from '$lib/offline/SyncBanner.svelte';
 
 	provideChrome();
+	const { queue } = provideOffline();
+
+	/**
+	 * Drains on load, whenever the network returns, and whenever the app comes
+	 * back to the foreground — an installed PWA is far more often resumed than
+	 * reloaded, so focus is the signal that matters most.
+	 */
+	$effect(() => {
+		void queue.load().then(() => queue.drain());
+
+		const wake = () => void queue.drain();
+		const onVisible = () => {
+			if (document.visibilityState === 'visible') wake();
+		};
+		window.addEventListener('online', wake);
+		document.addEventListener('visibilitychange', onVisible);
+		return () => {
+			window.removeEventListener('online', wake);
+			document.removeEventListener('visibilitychange', onVisible);
+			queue.clearRetry();
+		};
+	});
 
 	let { children, data } = $props();
 </script>
@@ -20,6 +44,10 @@
 </svelte:head>
 
 <Header />
+
+<div class="banner-slot">
+	<SyncBanner />
+</div>
 
 <main>
 	{@render children()}
@@ -37,6 +65,12 @@
 </footer>
 
 <style>
+	.banner-slot {
+		padding: 0 20px;
+		padding-left: max(20px, env(safe-area-inset-left));
+		padding-right: max(20px, env(safe-area-inset-right));
+	}
+
 	main {
 		max-width: var(--shell-width);
 		margin: 0 auto;

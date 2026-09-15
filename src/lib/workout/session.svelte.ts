@@ -3,10 +3,10 @@ import type { Tool } from '$lib/types';
 /**
  * A workout in progress.
  *
- * Nothing here is durable yet — the session lives entirely in the browser until
- * it is finished, which is exactly the shape the sync protocol wants: one
- * commit point, one idempotent POST. The id is minted now rather than at the
- * end so that a replayed submission upserts rather than duplicating.
+ * Held in memory and mirrored to IndexedDB after every set, so a refresh, a
+ * phone call, or iOS reclaiming the tab costs nothing. The id is minted at the
+ * start rather than at the end, and survives a restore, so a replayed
+ * submission upserts instead of duplicating.
  */
 
 export type SessionMovement = { movementId: string; name: string; tool: Tool; weight: number };
@@ -32,8 +32,8 @@ export function slotKey(exerciseIndex: number, setIndex: number, slot: number): 
 
 export class WorkoutSession {
 	/** Idempotency key for the eventual POST. */
-	readonly id = crypto.randomUUID();
-	readonly startedAt = Date.now();
+	id = $state<string>(crypto.randomUUID());
+	startedAt = $state(Date.now());
 
 	readonly exercises: SessionExercise[];
 
@@ -135,6 +135,25 @@ export class WorkoutSession {
 			if (!this.isExerciseDone(i)) return i;
 		}
 		return null;
+	}
+
+	/**
+	 * Restores an interrupted workout, keeping its original id and start time —
+	 * a resumed session must submit as the same session, or a partial commit
+	 * that did land would end up duplicated.
+	 */
+	adopt(saved: {
+		sessionId: string;
+		startedAt: number;
+		lastAt: number;
+		active: number;
+		log: Record<string, number>;
+	}): void {
+		this.id = saved.sessionId;
+		this.startedAt = saved.startedAt;
+		this.lastAt = saved.lastAt;
+		this.active = saved.active;
+		this.log = { ...saved.log };
 	}
 
 	finish(): void {

@@ -12,6 +12,8 @@
 	import type { SessionSummary as SummaryView } from '$lib/server/sessions';
 	import type { SessionInput } from '$lib/session-payload';
 	import SessionSummary from './SessionSummary.svelte';
+	import { useOffline } from '$lib/offline/context.svelte';
+	import { clearLive, loadLive, saveLive } from '$lib/offline/live';
 	import { useChrome } from '$lib/shell/chrome.svelte';
 	import { setVolume, formatVolume, formatMinutes } from '$lib/volume';
 
@@ -31,6 +33,7 @@
 	let { day, lastLogs, config }: Props = $props();
 
 	const chrome = useChrome();
+	const { store, queue } = useOffline();
 
 	// svelte-ignore state_referenced_locally
 	const session = new WorkoutSession(
@@ -43,6 +46,47 @@
 			pair: ex.pair
 		}))
 	);
+
+	/** Null until the saved session has been checked, so nothing is overwritten. */
+	let restored = $state(false);
+
+	/**
+	 * Picks up an interrupted workout. A refresh, a phone call, or iOS
+	 * reclaiming a backgrounded tab all end the page; none of them should end
+	 * the workout.
+	 */
+	$effect(() => {
+		let cancelled = false;
+		void loadLive(store, day.id).then((saved) => {
+			if (cancelled || !saved) {
+				restored = true;
+				return;
+			}
+			session.adopt(saved);
+			restored = true;
+		});
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	/**
+	 * Writes the session after every change. Deliberately not debounced: the
+	 * write is a few hundred bytes, and the moment worth surviving is the one
+	 * right after a set is logged.
+	 */
+	$effect(() => {
+		if (!restored || session.finishedAt) return;
+		const snapshot = {
+			sessionId: session.id,
+			dayId: day.id,
+			startedAt: session.startedAt,
+			lastAt: session.lastAt,
+			active: session.active,
+			log: { ...session.log }
+		};
+		void saveLive(store, snapshot);
+	});
 
 	/** The clocks run off timestamps, so this only needs to nudge the view. */
 	$effect(() => {
@@ -143,31 +187,33 @@
 		saving = true;
 		syncError = null;
 
+		const payload = buildPayload();
+
+		// Durable first. Everything after this can fail without losing the
+		// workout, which is the whole point of the queue.
+		await queue.add(payload);
+		await clearLive(store);
+
 		try {
 			const response = await fetch('/api/sessions', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify(buildPayload())
+				body: JSON.stringify(payload)
 			});
-
-			const contentType = response.headers.get('content-type') ?? '';
-			if (!contentType.includes('application/json')) {
-				syncError =
-					'Signed out while you were training. The workout is still on this device — sign in again and it will save.';
-				return;
+			if ((response.headers.get('content-type') ?? '').includes('application/json')) {
+				const body = await response.json();
+				if (response.ok) summary = body.summary as SummaryView;
 			}
-
-			const body = await response.json();
-			if (!response.ok) {
-				syncError = `Could not save: ${body.error ?? response.status}`;
-				return;
-			}
-			summary = body.summary as SummaryView;
 		} catch {
-			syncError =
-				'No connection, so this is not saved yet. Keep this screen open until you are back online.';
+			// The queue owns the retry; the screen just shows local numbers.
 		} finally {
 			saving = false;
+			if (!summary) {
+				syncError =
+					queue.status === 'reauth'
+						? 'Signed out while you were training. It is saved on this device and will send once you sign in.'
+						: 'Saved on this device. It will reach the server on its own once you are back online.';
+			}
 		}
 	}
 
@@ -220,7 +266,7 @@
 	{:else}
 		<section class="pending">
 			<div class="kicker">{day.key} day complete</div>
-			<h2>{saving ? 'Saving…' : 'Not saved'}</h2>
+			<h2>{saving ? 'Saving…' : 'Saved on this device'}</h2>
 			<p class="text-muted sub">
 				{syncError ?? 'Sending this workout to the server.'}
 			</p>
@@ -238,9 +284,12 @@
 					<div class="stat-value num">{session.loggedCount}</div>
 				</li>
 			</ul>
-			{#if syncError}
-				<button class="btn btn-primary" onclick={commit} disabled={saving}>Try again</button>
-			{/if}
+			<div class="pending-actions">
+				<button class="btn btn-secondary" onclick={() => queue.drain()} disabled={saving}>
+					Try now
+				</button>
+				<a class="btn btn-primary" href={resolve('/')}>Back to my days</a>
+			</div>
 		</section>
 	{/if}
 {:else}
@@ -311,6 +360,13 @@
 
 	.pending {
 		padding-top: 30px;
+	}
+	.pending-actions {
+		display: flex;
+		gap: 10px;
+	}
+	.pending-actions .btn {
+		text-decoration: none;
 	}
 	.kicker {
 		font-size: 9.5px;
