@@ -212,6 +212,12 @@
 		text-decoration: none;
 	}
 
+	@media (hover: hover) and (pointer: fine) {
+		.day:hover {
+			box-shadow: var(--shadow-md);
+		}
+	}
+
 	@media (max-width: 520px) {
 		.day {
 			flex-wrap: wrap;

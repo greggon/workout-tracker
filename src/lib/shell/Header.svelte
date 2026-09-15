@@ -106,9 +106,9 @@
 	.inner {
 		max-width: var(--shell-width);
 		margin: 0 auto;
-		padding: 0 20px;
-		padding-left: max(20px, env(safe-area-inset-left));
-		padding-right: max(20px, env(safe-area-inset-right));
+		padding: 0 var(--gutter);
+		padding-left: max(var(--gutter), env(safe-area-inset-left));
+		padding-right: max(var(--gutter), env(safe-area-inset-right));
 	}
 
 	.bar {
@@ -219,5 +219,30 @@
 		flex: none;
 		font-size: 11.5px;
 		color: var(--on-section-accent);
+	}
+
+	/*
+	 * Desktop. The block shrinks — 27px of title and 20px of air above it is
+	 * sized for a phone held at arm's length — and it stays put while the page
+	 * scrolls under it, which is what a window's title bar does. During a
+	 * workout that keeps the clocks and the progress bar on screen for the whole
+	 * session rather than only at the top of the page.
+	 */
+	@media (min-width: 900px) and (pointer: fine) {
+		header {
+			position: sticky;
+			top: 0;
+			z-index: 30;
+			padding: 15px 0 17px;
+		}
+		.title {
+			font-size: 23px;
+		}
+		.clocks {
+			margin-top: 14px;
+		}
+		.clock-value {
+			font-size: 25px;
+		}
 	}
 </style>

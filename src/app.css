@@ -109,6 +109,33 @@
 
 	/* v2 is phone-shaped: a single narrow column, centred. */
 	--shell-width: 520px;
+	/* The page's side padding. Widens with the window, so a desktop page is not
+	   a phone page with the same 20px margin around it. */
+	--gutter: 20px;
+	/* The desktop navigation rail. Zero until the breakpoint, where the rail
+	   starts rendering and the layout grid gives it this column. */
+	--rail-width: 0px;
+}
+
+/*
+ * Desktop.
+ *
+ * Not a wider phone: the floating tab bar gives way to a fixed rail, the column
+ * gets wider and the gutters get bigger. 900px is where a rail plus a readable
+ * column both fit — below it, everything here is inert and the phone layout is
+ * untouched.
+ *
+ * The pointer is part of the test, not an extra. A large phone in landscape is
+ * over 900px wide — an iPhone Pro Max is 932 — so width alone would hand a
+ * phone the desktop rail the moment it was turned sideways. `pointer: fine`
+ * means a mouse or a trackpad, which is the thing the rail is actually for.
+ */
+@media (min-width: 900px) and (pointer: fine) {
+	:root {
+		--shell-width: 720px;
+		--gutter: 32px;
+		--rail-width: 244px;
+	}
 }
 
 /*
@@ -271,6 +298,29 @@ select,
 .selectable {
 	-webkit-user-select: text;
 	user-select: text;
+}
+
+/*
+ * On a machine with a mouse, all of it. Locking selection is a phone
+ * accommodation — it stops a mis-registered tap raising "search Google for
+ * 'Close grip bench'" mid-set. On a desktop it is the opposite of native: you
+ * expect to be able to select a weight and copy it.
+ *
+ * Keyed on the pointer, not the width, so a touchscreen laptop keeps the phone
+ * behaviour at any window size.
+ */
+@media (hover: hover) and (pointer: fine) {
+	body {
+		-webkit-user-select: text;
+		user-select: text;
+	}
+}
+
+/* A thin scrollbar in the app's own colours rather than the browser's default
+   slab, which on a dark page is a bright stripe down the edge. */
+html {
+	scrollbar-width: thin;
+	scrollbar-color: var(--color-neutral-700) transparent;
 }
 
 h1,
@@ -655,6 +705,35 @@ textarea.input {
 	justify-content: flex-end;
 	gap: var(--space-2);
 	margin-top: var(--space-2);
+}
+
+/*
+ * Desktop affordances.
+ *
+ * Touch gets its feedback from :active; a pointer wants to know what is
+ * clickable *before* it clicks. These are the rules that can live globally —
+ * rows and cards carry their own, next to the rest of their styling.
+ */
+@media (hover: hover) and (pointer: fine) {
+	.table tbody tr:hover td {
+		background: color-mix(in srgb, var(--color-text) 4%, transparent);
+	}
+}
+
+@media (min-width: 900px) and (pointer: fine) {
+	/* A button stretched across a 720px column is a phone's full-width action
+	   button in a window that has no reason for one. It sizes to its label and
+	   sits at the start of its container instead. */
+	.btn-block {
+		width: auto;
+		min-width: 200px;
+		align-self: flex-start;
+	}
+	/* A sheet rising from the bottom edge is a phone gesture; on a desktop a
+	   dialog belongs in the middle of the window. */
+	.dialog-backdrop {
+		place-items: center;
+	}
 }
 
 @media (prefers-reduced-motion: reduce) {

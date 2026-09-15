@@ -6,10 +6,11 @@ import { rotateFrom } from '$lib/volume';
 import type { LayoutServerLoad } from './$types';
 
 /**
- * Build stamp, plus the day the tab bar's centre button starts.
+ * Build stamp, plus the day the tab bar's centre button — and the desktop
+ * rail's start button — begins.
  *
- * The rotation lives here rather than on the home page because the tab bar is
- * on every screen — asking each route to compute it would be four copies of the
+ * The rotation lives here rather than on the home page because both navigations
+ * are on every screen — asking each route to compute it would be four copies of the
  * same "what is next" rule.
  */
 export const load: LayoutServerLoad = async ({ locals }) => {
@@ -29,8 +30,13 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		}
 	}
 
+	const next = rotateFrom(days, lastKey)[0] ?? null;
+
 	return {
-		nextDayId: rotateFrom(days, lastKey)[0]?.id ?? null,
+		nextDayId: next?.id ?? null,
+		/* Labels the rail's start button — "Start B day" rather than a bare
+		   "Start workout", which on a desktop has the room to say which. */
+		nextDayKey: next?.key ?? null,
 		build: {
 			sha: (env.GIT_SHA ?? 'dev').slice(0, 7),
 			time: formatBuildTime(env.BUILD_TIME ?? 'local'),

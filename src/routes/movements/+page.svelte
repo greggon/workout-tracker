@@ -87,5 +87,18 @@
 	.chev {
 		flex: none;
 		color: var(--color-neutral-600);
+		transition: color 0.12s ease;
+	}
+
+	/* A pointer wants to know a row is clickable before it clicks it; touch
+	   finds out by pressing. */
+	@media (hover: hover) and (pointer: fine) {
+		.row:hover {
+			background: color-mix(in srgb, var(--color-accent) 7%, var(--color-surface));
+			box-shadow: var(--shadow-md);
+		}
+		.row:hover .chev {
+			color: var(--color-accent);
+		}
 	}
 </style>

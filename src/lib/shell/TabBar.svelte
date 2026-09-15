@@ -2,6 +2,7 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import DumbbellIcon from './DumbbellIcon.svelte';
+	import { destinations } from './nav';
 
 	/**
 	 * The floating tab bar from v2. Four destinations either side of a centre
@@ -9,7 +10,8 @@
 	 *
 	 * Hidden during a workout: the screen is a single task with its own finish
 	 * button, and a bar offering to navigate away mid-set is an invitation to
-	 * lose your place.
+	 * lose your place. Hidden again above 900px, where SideRail takes over — the
+	 * two read the same destination list.
 	 */
 	type Props = { nextDayId: string | null };
 	let { nextDayId }: Props = $props();
@@ -17,25 +19,19 @@
 	const path = $derived(page.url.pathname);
 	const hidden = $derived(path.startsWith('/workout/'));
 
-	const tabs = $derived([
-		{ href: resolve('/'), label: 'Today', match: (p: string) => p === '/' },
-		{ href: resolve('/routine'), label: 'Routine', match: (p: string) => p.startsWith('/routine') },
-		{
-			href: resolve('/movements'),
-			label: 'History',
-			match: (p: string) => p.startsWith('/movements')
-		},
-		{ href: resolve('/settings'), label: 'Gear', match: (p: string) => p.startsWith('/settings') }
-	]);
+	const tabs = destinations();
 
-	const left = $derived(tabs.slice(0, 2));
-	const right = $derived(tabs.slice(2));
+	const left = tabs.slice(0, 2);
+	const right = tabs.slice(2);
 </script>
 
 {#if !hidden}
 	<nav class="wrap" aria-label="Main">
 		<div class="bar">
 			{#each left as tab (tab.href)}
+				<!-- nav.ts resolves these once; resolve() here would be resolving an
+				     already-resolved path. -->
+				<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 				<a class="tab" class:on={tab.match(path)} href={tab.href}>{tab.label}</a>
 			{/each}
 
@@ -53,6 +49,9 @@
 			</div>
 
 			{#each right as tab (tab.href)}
+				<!-- nav.ts resolves these once; resolve() here would be resolving an
+				     already-resolved path. -->
+				<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 				<a class="tab" class:on={tab.match(path)} href={tab.href}>{tab.label}</a>
 			{/each}
 		</div>
@@ -119,5 +118,14 @@
 	.fab:hover {
 		color: var(--on-section);
 		filter: brightness(1.12);
+	}
+
+	/* The rail replaces this once the window is wide enough to hold one. Last in
+	   the sheet on purpose: a media query adds no specificity, so this has to
+	   come after `.wrap`'s own `display: flex` to win. */
+	@media (min-width: 900px) and (pointer: fine) {
+		.wrap {
+			display: none;
+		}
 	}
 </style>
