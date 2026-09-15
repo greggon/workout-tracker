@@ -26,6 +26,8 @@
 		const next = [...order];
 		[next[index], next[to]] = [next[to], next[index]];
 		order = next;
+		// The submitted value is filled in from `order` at submit time rather
+		// than read out of the DOM — see the form below.
 		reorderForm.requestSubmit();
 	}
 </script>
@@ -65,7 +67,21 @@
 
 <h6 class="label">Days · in rotation order</h6>
 
-<form method="POST" action="?/reorder" use:enhance bind:this={reorderForm}>
+<!--
+	The order is written into the submission here, not read back out of the
+	hidden input. Svelte flushes state to the DOM on a microtask, so a
+	`requestSubmit()` fired straight after assigning `order` would post the
+	*previous* value — the server would then apply no change, the load would
+	revalidate identically, and the list would visibly snap back.
+-->
+<form
+	method="POST"
+	action="?/reorder"
+	bind:this={reorderForm}
+	use:enhance={({ formData }) => {
+		formData.set('order', order.join(','));
+	}}
+>
 	<input type="hidden" name="order" value={order.join(',')} />
 </form>
 
