@@ -8,6 +8,7 @@ import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ locals }) => {
 	const days = listDays(getDb(), locals.user.id);
 	return {
+		header: { kicker: 'Routine', title: 'My split', back: '/' },
 		days: days.map((day) => {
 			const planned = day.exercises.map((ex) => ({
 				sets: ex.sets,

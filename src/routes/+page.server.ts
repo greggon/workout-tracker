@@ -26,6 +26,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const recent = recentSessions(getDb(), userId, 4);
 
 	return {
+		header: { kicker: `Rotation · ${days.length} day split`, title: "Let's lift 💪" },
 		days: rotateFrom(days, lastKey).map((day) => {
 			const planned = day.exercises.map((ex) => ({
 				sets: ex.sets,

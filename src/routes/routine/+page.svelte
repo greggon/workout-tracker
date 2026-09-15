@@ -36,12 +36,6 @@
 	<title>My routine</title>
 </svelte:head>
 
-<div class="head">
-	<h2>My routine</h2>
-	<a class="btn btn-ghost" href={resolve('/settings')}>Equipment</a>
-	<a class="btn btn-ghost" href={resolve('/')}>Done</a>
-</div>
-
 {#if form?.message}
 	<p class="error" role="alert">{form.message}</p>
 {/if}
@@ -136,17 +130,6 @@
 </ul>
 
 <style>
-	.head {
-		display: flex;
-		align-items: baseline;
-		gap: 12px;
-		padding-top: 22px;
-	}
-	h2 {
-		font-size: 30px;
-		letter-spacing: -0.025em;
-		margin: 0 auto 0 0;
-	}
 	.label {
 		color: var(--color-neutral-500);
 		margin: 26px 0 10px;

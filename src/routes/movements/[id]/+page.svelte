@@ -1,6 +1,5 @@
 <script lang="ts">
 	import LineChart from '$lib/charts/LineChart.svelte';
-	import { TOOL_LABELS } from '$lib/types';
 	import { formatVolume, formatWeight, relativeDay } from '$lib/volume';
 
 	let { data } = $props();
@@ -35,19 +34,6 @@
 <svelte:head>
 	<title>{history.name}</title>
 </svelte:head>
-
-<div class="head">
-	<div>
-		<div class="kicker">
-			{history.tool ? TOOL_LABELS[history.tool] : 'Movement'} · {history.totalSessions} session{history.totalSessions ===
-			1
-				? ''
-				: 's'}
-		</div>
-		<h2>{history.name}</h2>
-	</div>
-	<a class="btn btn-ghost" href={data.back}>Back</a>
-</div>
 
 {#if history.best}
 	<p class="text-muted sub">
@@ -94,28 +80,6 @@
 </div>
 
 <style>
-	.head {
-		display: flex;
-		align-items: flex-start;
-		gap: 12px;
-		padding-top: 22px;
-	}
-	.head > div:first-child {
-		flex: 1;
-		min-width: 0;
-	}
-	.kicker {
-		font-size: 9.5px;
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
-		color: var(--color-accent);
-		margin-bottom: 4px;
-	}
-	h2 {
-		font-size: 30px;
-		letter-spacing: -0.025em;
-		margin: 0;
-	}
 	.sub {
 		max-width: 52ch;
 		margin: 10px 0 24px;

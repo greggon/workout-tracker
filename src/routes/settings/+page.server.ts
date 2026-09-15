@@ -5,6 +5,7 @@ import { normalizeStock } from '$lib/plates';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => ({
+	header: { kicker: 'Your gym', title: 'Equipment', back: '/routine' },
 	settings: {
 		barWeight: locals.user.barWeight,
 		ezBarWeight: locals.user.ezBarWeight,

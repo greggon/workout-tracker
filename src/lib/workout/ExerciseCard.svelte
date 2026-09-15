@@ -153,7 +153,7 @@
 
 <style>
 	.card-wrap {
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-lg);
 		box-shadow: inset 0 0 0 1px var(--color-divider);
 		transition:
 			opacity 0.3s ease,
@@ -161,9 +161,11 @@
 	}
 	.card-wrap.open {
 		background: var(--color-surface);
+		/* Not a literal black shadow: at 45% it is invisible on a dark ground
+		   and a bruise on a light one. */
 		box-shadow:
-			inset 0 0 0 1px var(--color-accent-700),
-			0 8px 24px rgba(0, 0, 0, 0.45);
+			inset 0 0 0 1px var(--color-accent-600),
+			var(--shadow-md);
 	}
 	.card-wrap.done {
 		opacity: 0.55;

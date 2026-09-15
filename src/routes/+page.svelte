@@ -4,240 +4,298 @@
 
 	let { data } = $props();
 
-	const nextKey = $derived(data.days[0]?.key ?? null);
+	const upNext = $derived(data.days[0] ?? null);
+	const later = $derived(data.days.slice(1));
 
-	const subtitle = $derived.by(() => {
-		if (data.days.length === 0) return 'No days in your routine yet.';
-		if (!data.lastKey || data.lastAt === null) {
-			return `${data.splitSize}-day rotation, nothing logged yet. Start wherever you like.`;
-		}
-		return `Next up is ${nextKey} day. ${data.splitSize}-day rotation, and you last finished ${data.lastKey} day ${relativeDay(data.lastAt)}.`;
-	});
+	/** Thousands, because planned volume runs to five figures and the tile is narrow. */
+	const thousands = (n: number) => `${Math.round(n / 100) / 10}k`;
+
+	const tiles = $derived(
+		upNext
+			? [
+					{ value: String(upNext.exerciseCount), label: 'exercises' },
+					{ value: String(upNext.sets), label: 'sets' },
+					{ value: thousands(upNext.volume), label: 'lb planned' }
+				]
+			: []
+	);
 
 	const stats = $derived([
-		{
-			label: 'Sessions logged',
-			value: String(data.stats.sessionCount),
-			note: `across ${data.splitSize} day types`
-		},
-		{
-			label: `Last ${data.stats.sampleSize || 4} avg volume`,
-			value: `${formatVolume(data.stats.avgVolume)} lb`,
-			note: 'weight moved per session'
-		},
-		{
-			label: 'Avg session',
-			value: data.stats.avgMins ? formatMinutes(data.stats.avgMins) : '—',
-			note: 'door to door'
-		}
+		{ value: String(data.stats.sessionCount), label: 'sessions' },
+		{ value: `${formatVolume(data.stats.avgVolume)}`, label: 'avg lb' },
+		{ value: data.stats.avgMins ? formatMinutes(data.stats.avgMins) : '—', label: 'avg time' }
 	]);
 </script>
 
-<svelte:head>
-	<title>Workout</title>
-</svelte:head>
+<svelte:head><title>Workout</title></svelte:head>
 
-<div class="head">
-	<h2>My days</h2>
-	<a class="btn btn-ghost" href={resolve('/routine')}>Edit routine</a>
-</div>
-<p class="text-muted sub">{subtitle}</p>
-
-{#if data.days.length === 0}
-	<div class="card elev-sm empty">
+{#if !upNext}
+	<div class="card">
 		<div class="card-title">Nothing to train yet</div>
 		<p class="text-muted">Build a split and add some movements to get started.</p>
-		<a class="btn btn-primary" href={resolve('/routine')}>Set up my routine</a>
+		<a class="btn btn-primary btn-block" href={resolve('/routine')}>Set up my routine</a>
 	</div>
 {:else}
-	<ul class="days">
-		{#each data.days as day, i (day.id)}
-			{@const isNext = i === 0}
-			<li class="day" class:next={isNext}>
-				<a class="day-main" href={resolve('/workout/[id]', { id: day.id })}>
-					<span class="badge" class:badge-next={isNext}>{day.key}</span>
-					<span class="day-text">
-						<span class="day-title-row">
-							<span class="day-title">{day.title}</span>
-							{#if isNext}
-								<span class="tag tag-accent">Up next</span>
-							{:else if day.lastAt}
-								<span class="tag ago">{relativeDay(day.lastAt)}</span>
-							{:else}
-								<span class="tag ago">new</span>
-							{/if}
-						</span>
-						<span class="day-meta num">
-							{day.exerciseCount} exercises · {day.sets} sets · {formatVolume(day.volume)} lb planned
-						</span>
-					</span>
-				</a>
-				{#if day.chips.length}
-					<ul class="chips">
-						{#each day.chips as chip, ci (ci)}
-							<li class="chip">{chip}</li>
-						{/each}
-					</ul>
-				{/if}
+	<h2 class="label section section-top">This month</h2>
+	<ul class="stats">
+		{#each stats as stat, i (stat.label)}
+			<li class="stat">
+				<span class="cap" data-cap={i}></span>
+				<span class="tile-value num">{stat.value}</span>
+				<span class="tile-label">{stat.label}</span>
 			</li>
 		{/each}
 	</ul>
 
-	<ul class="stats">
-		{#each stats as stat (stat.label)}
-			<li class="stat">
-				<div class="stat-label">{stat.label}</div>
-				<div class="stat-value num">{stat.value}</div>
-				<div class="stat-note">{stat.note}</div>
-			</li>
-		{/each}
-	</ul>
+	<section class="hero card">
+		<div class="hero-head">
+			<span class="badge">{upNext.key}</span>
+			<span class="hero-text">
+				<span class="card-kicker">Up next</span>
+				<span class="hero-title">{upNext.title}</span>
+			</span>
+		</div>
+
+		<ul class="tiles">
+			{#each tiles as tile, i (tile.label)}
+				<li class="tile">
+					<span class="cap" data-cap={i}></span>
+					<span class="tile-value num">{tile.value}</span>
+					<span class="tile-label">{tile.label}</span>
+				</li>
+			{/each}
+		</ul>
+
+		<ul class="lines">
+			{#each upNext.chips as chip, i (i)}
+				<li class="line"><span class="line-name">{chip}</span></li>
+			{/each}
+		</ul>
+
+		<a class="btn btn-primary btn-block" href={resolve('/workout/[id]', { id: upNext.id })}>
+			Start {upNext.key} day
+		</a>
+	</section>
+
+	{#if later.length}
+		<h2 class="label section">Then in rotation</h2>
+		<ul class="rotation">
+			{#each later as day (day.id)}
+				<li>
+					<a class="row" href={resolve('/workout/[id]', { id: day.id })}>
+						<span class="badge badge-quiet">{day.key}</span>
+						<span class="row-text">
+							<span class="row-title">{day.title}</span>
+							<span class="row-meta">
+								{day.exerciseCount} exercises · {day.sets} sets{day.lastAt
+									? ` · ${relativeDay(day.lastAt)}`
+									: ''}
+							</span>
+						</span>
+						<svg
+							width="17"
+							height="17"
+							viewBox="0 0 256 256"
+							fill="currentColor"
+							class="chev"
+							aria-hidden="true"
+						>
+							<path
+								d="M181.7 133.7l-80 80a8 8 0 0 1-11.4-11.4L164.7 128 90.3 53.7a8 8 0 0 1 11.4-11.4l80 80a8 8 0 0 1 0 11.4Z"
+							/>
+						</svg>
+					</a>
+				</li>
+			{/each}
+		</ul>
+	{/if}
 {/if}
 
 <style>
-	.head {
+	.hero {
+		gap: 0;
+		/* The stats row above ends flush, and a card butting straight onto it
+		   reads as one block. This is the seam between two sections, so it gets
+		   more air than the 24px rhythm between a heading and its own content. */
+		margin-top: 30px;
+	}
+	.hero-head {
 		display: flex;
-		align-items: baseline;
-		gap: 12px;
-		padding-top: 22px;
+		align-items: center;
+		gap: 14px;
 	}
-	h2 {
-		font-size: 30px;
-		letter-spacing: -0.025em;
-		margin: 0 auto 0 0;
+	.hero-text {
+		flex: 1;
+		min-width: 0;
 	}
-	.sub {
-		max-width: 46ch;
-		margin: 0 0 30px;
-		font-size: 15px;
+	.hero-title {
+		display: block;
+		font-family: var(--font-heading);
+		font-weight: var(--font-heading-weight);
+		font-size: 19px;
+		letter-spacing: -0.015em;
+		line-height: 1.2;
 	}
 
-	.days,
-	.chips,
+	.badge {
+		flex: none;
+		width: 46px;
+		height: 46px;
+		border-radius: var(--radius-md);
+		display: grid;
+		place-items: center;
+		font-family: var(--font-heading);
+		font-size: 20px;
+		color: var(--color-accent-100);
+		background: var(--color-accent-800);
+		box-shadow: inset 0 0 0 1px var(--color-accent-600);
+	}
+	.badge-quiet {
+		width: 40px;
+		height: 40px;
+		font-size: 17px;
+		color: var(--color-neutral-300);
+		background: var(--color-neutral-900);
+		box-shadow: none;
+	}
+
+	.tiles,
+	.lines,
+	.rotation,
 	.stats {
 		list-style: none;
 		margin: 0;
 		padding: 0;
 	}
 
-	.days {
-		display: grid;
-		gap: 12px;
-		margin-bottom: 34px;
+	.tiles,
+	.stats {
+		display: flex;
+		gap: 8px;
 	}
-	.day {
-		background: var(--color-surface);
+	.tiles {
+		margin-top: 16px;
+	}
+	.tile,
+	.stat {
+		flex: 1;
+		min-width: 0;
 		border-radius: var(--radius-md);
-		box-shadow: var(--shadow-sm);
-		overflow: hidden;
+		padding: 12px 10px 13px;
+		text-align: center;
 	}
-	/* The next day up is the one thing on this screen you act on, so it is the
-	   only card that carries the accent ring. */
-	.day.next {
-		box-shadow:
-			inset 0 0 0 1px var(--color-accent-700),
-			0 6px 18px rgba(0, 0, 0, 0.4);
+	.tile {
+		background: var(--color-bg);
+	}
+	.stat {
+		background: var(--color-surface);
+		box-shadow: var(--shadow-sm);
+		border-radius: var(--radius-md);
+		text-align: left;
+		padding: 14px;
+	}
+	/* A short coloured cap above each figure, so three identical tiles are
+	   still distinguishable at a glance. */
+	.cap {
+		display: block;
+		width: 18px;
+		height: 3px;
+		border-radius: var(--radius-pill);
+		margin-bottom: 9px;
+	}
+	.tile .cap {
+		margin-inline: auto;
+	}
+	.cap[data-cap='0'] {
+		background: var(--color-accent-500);
+	}
+	.cap[data-cap='1'] {
+		background: var(--color-accent-2-500);
+	}
+	.cap[data-cap='2'] {
+		background: var(--color-neutral-500);
+	}
+	.tile-value {
+		display: block;
+		font-family: var(--font-heading);
+		font-size: 21px;
+		line-height: 1.2;
+	}
+	.tile-label {
+		display: block;
+		font-size: 11.5px;
+		color: var(--color-neutral-500);
+		margin-top: 1px;
 	}
 
-	.day-main {
+	.lines {
+		display: flex;
+		flex-direction: column;
+		gap: 7px;
+		margin-top: 16px;
+	}
+	.line {
 		display: flex;
 		align-items: center;
-		gap: 14px;
-		padding: 16px 18px;
+		gap: 10px;
+		font-size: 13.5px;
+	}
+	.line-name {
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.section {
+		color: var(--color-neutral-500);
+		margin: 24px 0 10px;
+	}
+	/* First thing on the page, so it takes the shell's padding rather than
+	   adding its own on top of it. */
+	.section-top {
+		margin-top: 0;
+	}
+
+	.rotation {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+	}
+	.row {
+		display: flex;
+		align-items: center;
+		gap: 13px;
+		background: var(--color-surface);
+		border-radius: var(--radius-lg);
+		padding: 14px 16px;
+		box-shadow: var(--shadow-sm);
 		color: inherit;
 		text-decoration: none;
 	}
-
-	.badge {
-		flex: none;
-		width: 38px;
-		height: 38px;
-		border-radius: var(--radius-md);
-		display: grid;
-		place-items: center;
-		font-family: var(--font-heading);
-		font-size: 16px;
-		color: var(--color-neutral-300);
-		background: var(--color-neutral-900);
-	}
-	.badge-next {
-		color: var(--color-accent-200);
-		background: var(--color-accent-800);
-		box-shadow: inset 0 0 0 1px var(--color-accent-600);
-	}
-
-	.day-text {
-		min-width: 0;
+	.row-text {
 		flex: 1;
+		min-width: 0;
 	}
-	.day-title-row {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		flex-wrap: wrap;
-	}
-	.day-title {
+	.row-title {
+		display: block;
 		font-family: var(--font-heading);
 		font-weight: var(--font-heading-weight);
-		font-size: 19px;
-		letter-spacing: -0.015em;
+		font-size: 16.5px;
+		letter-spacing: -0.01em;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
-	.day-meta {
+	.row-meta {
 		display: block;
-		font-size: 12.5px;
+		font-size: 12px;
 		color: var(--color-neutral-500);
-		margin-top: 3px;
+		margin-top: 2px;
 	}
-	.tag.ago {
-		font-size: 11px;
-		padding: 2px 8px;
-		color: var(--color-neutral-500);
-	}
-
-	.chips {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 6px;
-		padding: 0 18px 14px 70px;
-	}
-	.chip {
-		font-size: 11.5px;
-		color: var(--color-neutral-400);
-		background: var(--color-neutral-900);
-		border-radius: 5px;
-		padding: 3px 8px;
-	}
-
-	.stats {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-		gap: 14px;
-	}
-	.stat-label {
-		font-size: 9.5px;
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
-		color: var(--color-accent);
-	}
-	.stat-value {
-		font-family: var(--font-heading);
-		font-size: 26px;
-		line-height: 1.15;
-	}
-	.stat-note {
-		font-size: 11.5px;
-		color: var(--color-neutral-500);
-	}
-
-	.empty {
-		align-items: flex-start;
-		gap: var(--space-3);
-		padding: var(--space-6);
-	}
-
-	@media (max-width: 480px) {
-		.chips {
-			padding-left: 18px;
-		}
+	.chev {
+		flex: none;
+		color: var(--color-neutral-600);
 	}
 </style>

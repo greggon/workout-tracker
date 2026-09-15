@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
 	import { describeStock, loadingLabel, normalizeStock, perSideStock } from '$lib/plates';
 	import PlateDiagram from '$lib/workout/PlateDiagram.svelte';
 	import { TOOLS, TOOL_LABELS, TOOL_SPEC, type PlateStock, type Tool } from '$lib/types';
@@ -35,10 +34,6 @@
 	<title>Equipment</title>
 </svelte:head>
 
-<div class="head">
-	<h2>Equipment</h2>
-	<a class="btn btn-ghost" href={resolve('/routine')}>Back</a>
-</div>
 <p class="text-muted sub">
 	The plate diagrams are built from this, so they only ask for plates you actually have.
 </p>
@@ -165,17 +160,6 @@
 {/if}
 
 <style>
-	.head {
-		display: flex;
-		align-items: baseline;
-		gap: 12px;
-		padding-top: 22px;
-	}
-	h2 {
-		font-size: 30px;
-		letter-spacing: -0.025em;
-		margin: 0 auto 0 0;
-	}
 	.sub {
 		max-width: 46ch;
 		margin: 0 0 20px;

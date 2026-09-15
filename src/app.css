@@ -1,10 +1,19 @@
 /*
- * Design tokens and component classes, ported from the design's
- * "Nocturne" stylesheet. Values are the design's, verbatim, so that markup
- * lifted from the mockup renders as drawn.
+ * Design tokens and component classes, ported from the v2 design.
  *
- * The system is deliberately dark-only — there is no light palette to fall
- * back to, so `color-scheme` is pinned rather than left to the device.
+ * Both themes are supported. The palette is dark-first, because that is what
+ * the design is drawn in; light is the same OKLCH ramp read from the other end,
+ * so step 100 in one theme is step 900 in the other and every component keeps
+ * its contrast without being restyled.
+ *
+ * The three states that matter:
+ *   - no stamp + dark OS   → dark   (bare :root)
+ *   - no stamp + light OS  → light  (the media query)
+ *   - data-theme stamped   → that theme, whatever the OS says
+ *
+ * Every token is declared on bare :root first. A colour whose only definition
+ * lives inside a media query or an attribute selector is the classic unreadable
+ * -page bug: it simply does not apply in the unstamped state.
  */
 
 :root {
@@ -17,8 +26,6 @@
 	--color-accent-2: #a7a1db;
 	--color-divider: color-mix(in srgb, #e9e9ed 16%, transparent);
 
-	/* Tonal ramps on one shared lightness scale, so the same step of any
-	   role matches the others in visual value. */
 	--color-neutral-100: #f3f5fe;
 	--color-neutral-200: #e4e7f5;
 	--color-neutral-300: #cfd3e5;
@@ -39,22 +46,31 @@
 	--color-accent-800: #423a6a;
 	--color-accent-900: #2b2741;
 
-	--color-accent-2-100: #f5f4ff;
-	--color-accent-2-200: #e7e5fe;
-	--color-accent-2-300: #d2cefd;
-	--color-accent-2-400: #b5afe8;
 	--color-accent-2-500: #9690c9;
-	--color-accent-2-600: #7972a9;
-	--color-accent-2-700: #5c5783;
 	--color-accent-2-800: #423e5d;
-	--color-accent-2-900: #2b293a;
+	--color-accent-2-100: #f5f4ff;
+
+	/*
+	 * The header block's ground. Deliberately NOT swapped in light mode: it is
+	 * the one surface that stays deep indigo in both themes, which is what
+	 * makes it read as the app's own chrome rather than part of the page.
+	 */
+	--color-section: #262a60;
+	--color-section-glow: #353b80;
+	/* Text and hairlines that sit on that block, in both themes. */
+	--on-section: #f3f5fe;
+	--on-section-dim: #cfd3e5;
+	--on-section-accent: #d2cefd;
+	--on-section-fill: rgba(233, 233, 237, 0.1);
+	--on-section-fill-accent: rgba(210, 206, 253, 0.14);
+	/* The progress track, recessed into the header block. */
+	--on-section-track: rgba(0, 0, 0, 0.28);
 
 	--font-heading: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
 	--font-heading-weight: 500;
 	--font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
-	/* The design's scale is built on 2.8px, not 4px. Keeping it means the
-	   mockup's paddings transfer without re-tuning every surface. */
+	/* The design's scale is built on 2.8px, not 4px. */
 	--space-1: 2.8px;
 	--space-2: 5.6px;
 	--space-3: 8.4px;
@@ -62,18 +78,112 @@
 	--space-6: 16.8px;
 	--space-8: 22.4px;
 
-	--radius-sm: 4px;
-	--radius-md: 8px;
-	--radius-lg: 14px;
+	/* v2 is much rounder than v1: cards are 22, rows 20, tiles 16, pills full. */
+	--radius-sm: 10px;
+	--radius-md: 16px;
+	--radius-lg: 22px;
+	--radius-xl: 26px;
+	--radius-pill: 999px;
+	/*
+	 * The header block's lower corners. The design offers both shapes; flat is
+	 * the chosen one, so the block runs edge to edge and reads as the window's
+	 * own chrome rather than a card floating at the top of the page. Set this
+	 * back to 30px for the rounded variant.
+	 */
+	--radius-header: 0;
 
-	/* Elevation on a dark ground is a hairline edge plus ambient darkness,
-	   not a drop shadow. */
-	--shadow-sm: 0 0 0 1px #3f424d;
-	--shadow-md: 0 0 0 1px #595d6c, 0 6px 18px rgba(0, 0, 0, 0.55);
-	--shadow-lg: 0 0 0 1px #9397ab, 0 16px 40px rgba(0, 0, 0, 0.65);
+	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.26);
+	--shadow-md: 0 2px 6px rgba(0, 0, 0, 0.34), 0 8px 22px rgba(0, 0, 0, 0.36);
+	--shadow-lg: 0 6px 16px rgba(0, 0, 0, 0.4), 0 20px 48px rgba(0, 0, 0, 0.5);
 
-	/* Width of the reading column. The design centres every screen on this. */
-	--shell-width: 760px;
+	/* v2 is phone-shaped: a single narrow column, centred. */
+	--shell-width: 520px;
+}
+
+/*
+ * Light. The ramps invert — 100 ↔ 900, 200 ↔ 800, and so on — so a component
+ * asking for `neutral-500` gets a mid tone in either theme without knowing
+ * which one it is in.
+ */
+@media (prefers-color-scheme: light) {
+	:root:not([data-theme='dark']) {
+		color-scheme: light;
+
+		--color-bg: #eceff8;
+		--color-surface: #f9fafe;
+		--color-text: #1b1d2a;
+		--color-accent: #6a5db0;
+		--color-accent-2: #7972a9;
+		--color-divider: color-mix(in srgb, #1b1d2a 14%, transparent);
+
+		--color-neutral-100: #292b31;
+		--color-neutral-200: #3f424d;
+		--color-neutral-300: #595d6c;
+		--color-neutral-400: #616577;
+		--color-neutral-500: #6e7284;
+		--color-neutral-600: #7e8294;
+		--color-neutral-700: #cfd3e5;
+		--color-neutral-800: #dfe3ef;
+		--color-neutral-900: #e7eaf5;
+
+		--color-accent-100: #2b2741;
+		--color-accent-200: #423a6a;
+		--color-accent-300: #574c8c;
+		--color-accent-400: #6f61b8;
+		--color-accent-500: #7b6ec7;
+		--color-accent-600: #c3bcfc;
+		--color-accent-700: #d9d6fd;
+		--color-accent-800: #e9e7fe;
+		--color-accent-900: #f3f2ff;
+
+		--color-accent-2-500: #7972a9;
+		--color-accent-2-800: #e9e7fe;
+		--color-accent-2-100: #2b2741;
+
+		--shadow-sm: 0 1px 2px rgba(27, 29, 42, 0.07), 0 2px 8px rgba(27, 29, 42, 0.05);
+		--shadow-md: 0 2px 6px rgba(27, 29, 42, 0.08), 0 8px 22px rgba(27, 29, 42, 0.08);
+		--shadow-lg: 0 6px 16px rgba(27, 29, 42, 0.1), 0 20px 48px rgba(27, 29, 42, 0.12);
+	}
+}
+
+/* An explicit choice beats the OS, in both directions. */
+:root[data-theme='light'] {
+	color-scheme: light;
+
+	--color-bg: #eceff8;
+	--color-surface: #f9fafe;
+	--color-text: #1b1d2a;
+	--color-accent: #6a5db0;
+	--color-accent-2: #7972a9;
+	--color-divider: color-mix(in srgb, #1b1d2a 14%, transparent);
+
+	--color-neutral-100: #292b31;
+	--color-neutral-200: #3f424d;
+	--color-neutral-300: #595d6c;
+	--color-neutral-400: #616577;
+	--color-neutral-500: #6e7284;
+	--color-neutral-600: #7e8294;
+	--color-neutral-700: #cfd3e5;
+	--color-neutral-800: #dfe3ef;
+	--color-neutral-900: #e7eaf5;
+
+	--color-accent-100: #2b2741;
+	--color-accent-200: #423a6a;
+	--color-accent-300: #574c8c;
+	--color-accent-400: #6f61b8;
+	--color-accent-500: #7b6ec7;
+	--color-accent-600: #c3bcfc;
+	--color-accent-700: #d9d6fd;
+	--color-accent-800: #e9e7fe;
+	--color-accent-900: #f3f2ff;
+
+	--color-accent-2-500: #7972a9;
+	--color-accent-2-800: #e9e7fe;
+	--color-accent-2-100: #2b2741;
+
+	--shadow-sm: 0 1px 2px rgba(27, 29, 42, 0.07), 0 2px 8px rgba(27, 29, 42, 0.05);
+	--shadow-md: 0 2px 6px rgba(27, 29, 42, 0.08), 0 8px 22px rgba(27, 29, 42, 0.08);
+	--shadow-lg: 0 6px 16px rgba(27, 29, 42, 0.1), 0 20px 48px rgba(27, 29, 42, 0.12);
 }
 
 *,
@@ -95,8 +205,7 @@ body {
 	line-height: 1.55;
 	font-weight: 400;
 	-webkit-font-smoothing: antialiased;
-	/* Stops iOS rubber-banding from revealing white behind the app in
-	   standalone mode. */
+	/* Stops iOS rubber-banding revealing white behind the app in standalone. */
 	overscroll-behavior-y: none;
 }
 
@@ -113,24 +222,22 @@ h6 {
 	margin: 0 0 var(--space-2);
 }
 h1 {
-	font-size: 42px;
+	font-size: 34px;
 }
 h2 {
-	font-size: 32px;
+	font-size: 27px;
 }
 h3 {
-	font-size: 25px;
+	font-size: 21px;
 }
 h4 {
-	font-size: 20px;
+	font-size: 18px;
 }
 h5 {
 	font-size: 16px;
 }
 h6 {
 	font-size: 13px;
-	letter-spacing: 0.08em;
-	text-transform: uppercase;
 }
 p {
 	margin: 0 0 var(--space-3);
@@ -140,7 +247,7 @@ a {
 	text-underline-offset: 3px;
 }
 a:hover {
-	color: var(--color-accent-300);
+	color: var(--color-accent-400);
 }
 img {
 	display: block;
@@ -159,29 +266,28 @@ img {
 }
 
 .text-muted {
-	color: color-mix(in srgb, var(--color-text) 55%, transparent);
+	color: var(--color-neutral-500);
 }
 
-/* Clocks, weights and rep counts all sit in columns that must not jitter as
-   digits change — the session timer ticks once a second. */
+/* Clocks, weights and rep counts sit in columns that must not jitter as digits
+   change — the session timer ticks once a second. */
 .num {
 	font-variant-numeric: tabular-nums;
+	letter-spacing: -0.02em;
 }
 
-/* — rules — */
-/* Freestanding rules fade to transparent at both ends. Box outlines and
-   in-control separators stay solid. */
+/* The design's small uppercase label, used for every section heading. */
+.label {
+	font-size: 10px;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+}
+
 .hr {
 	height: 1px;
 	border: 0;
 	margin: var(--space-4) 0;
-	background: linear-gradient(
-		to right,
-		transparent,
-		var(--color-divider) 48px,
-		var(--color-divider) calc(100% - 48px),
-		transparent
-	);
+	background: var(--color-divider);
 }
 
 /* — buttons — */
@@ -199,8 +305,8 @@ img {
 	color: var(--color-text);
 	background: transparent;
 	border: 1px solid transparent;
-	padding: var(--space-2) calc(var(--space-3) * 1.2);
-	border-radius: var(--radius-md);
+	padding: var(--space-2) var(--space-4);
+	border-radius: var(--radius-pill);
 }
 .btn svg {
 	display: block;
@@ -210,14 +316,12 @@ img {
 	cursor: not-allowed;
 }
 .btn-primary {
-	color: var(--color-accent);
-	border-color: var(--color-accent);
+	background: var(--color-accent-800);
+	color: var(--color-accent-100);
+	box-shadow: inset 0 0 0 1px var(--color-accent-600);
 }
 .btn-primary:hover {
-	background: color-mix(in srgb, var(--color-accent) 12%, transparent);
-}
-.btn-primary:active {
-	background: color-mix(in srgb, var(--color-accent) 22%, transparent);
+	background: color-mix(in srgb, var(--color-accent) 22%, var(--color-accent-800));
 }
 .btn-secondary {
 	border-color: var(--color-divider);
@@ -225,26 +329,22 @@ img {
 .btn-secondary:hover {
 	background: color-mix(in srgb, var(--color-text) 7%, transparent);
 }
-.btn-secondary:active {
-	background: color-mix(in srgb, var(--color-text) 14%, transparent);
-}
 .btn-ghost {
 	color: var(--color-accent);
-	padding-inline: var(--space-1);
+	padding-inline: var(--space-2);
 }
 .btn-ghost:hover {
-	background: color-mix(in srgb, var(--color-accent) 10%, transparent);
-}
-.btn-ghost:active {
-	background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+	background: color-mix(in srgb, var(--color-accent) 12%, transparent);
 }
 .btn-icon {
-	width: 36px;
-	height: 36px;
+	width: 38px;
+	height: 38px;
 	padding: 0;
 }
 .btn-block {
 	width: 100%;
+	min-height: 46px;
+	font-size: 15px;
 	margin-top: var(--space-2);
 }
 
@@ -261,26 +361,27 @@ img {
 }
 
 /* — forms — */
-.field > label {
+.field > label,
+.field > span {
 	display: block;
-	font-size: 12px;
-	margin-bottom: 5px;
-	color: color-mix(in srgb, var(--color-text) 70%, transparent);
+	font-size: 11px;
+	margin-bottom: 4px;
+	color: var(--color-neutral-500);
 }
 .input {
 	width: 100%;
-	min-height: 36px;
-	padding: 6px 10px;
+	min-height: 40px;
+	padding: 8px 12px;
 	font: inherit;
 	font-size: 14px;
 	color: var(--color-text);
 	caret-color: var(--color-accent);
-	background: var(--color-surface);
+	background: var(--color-bg);
 	border: 1px solid var(--color-divider);
 	border-radius: var(--radius-md);
 }
 .input:hover {
-	border-color: color-mix(in srgb, var(--color-text) 45%, transparent);
+	border-color: color-mix(in srgb, var(--color-text) 35%, transparent);
 }
 .input:focus-visible {
 	border-color: var(--color-accent);
@@ -291,10 +392,8 @@ textarea.input {
 	resize: vertical;
 }
 
-/* iOS Safari zooms the whole page when focusing an input below 16px. With a
-   sticky clock header and one exercise expanded, that is genuinely
-   disruptive mid-set — so touch devices get 16px and the design's 14px is
-   kept for pointer devices. */
+/* iOS Safari zooms the page when focusing an input below 16px. With a sticky
+   clock header and an exercise expanded, that is disruptive mid-set. */
 @media (pointer: coarse) {
 	.input {
 		font-size: 16px;
@@ -306,13 +405,13 @@ textarea.input {
 	display: inline-flex;
 	overflow: hidden;
 	border: 1px solid var(--color-divider);
-	border-radius: var(--radius-md);
+	border-radius: var(--radius-pill);
 }
 .seg-opt {
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
-	padding: 7px 12px;
+	padding: 8px 14px;
 	font-size: 13px;
 	cursor: pointer;
 }
@@ -327,8 +426,8 @@ textarea.input {
 	border-left: 1px solid var(--color-divider);
 }
 .seg-opt:has(input:checked) {
-	color: var(--color-accent);
-	box-shadow: inset 0 0 0 1px var(--color-accent);
+	color: var(--color-accent-100);
+	background: var(--color-accent-800);
 }
 .seg-opt:not(:has(input:checked)):hover {
 	background: color-mix(in srgb, var(--color-text) 7%, transparent);
@@ -343,28 +442,30 @@ textarea.input {
 	display: flex;
 	flex-direction: column;
 	gap: var(--space-2);
-	padding: var(--space-3);
-	border-radius: var(--radius-md);
+	padding: 18px;
+	border-radius: var(--radius-lg);
 	background: var(--color-surface);
+	box-shadow: var(--shadow-sm);
 }
 .card-kicker {
 	font-size: 10px;
-	letter-spacing: 0.1em;
+	letter-spacing: 0.14em;
 	text-transform: uppercase;
 	color: var(--color-accent);
 }
 .card-title {
 	font-family: var(--font-heading);
 	font-weight: var(--font-heading-weight);
-	font-size: 17px;
+	font-size: 19px;
+	letter-spacing: -0.015em;
 	line-height: 1.2;
 }
 .card-meta {
 	display: flex;
 	align-items: center;
 	gap: 6px;
-	font-size: 11px;
-	color: color-mix(in srgb, var(--color-text) 50%, transparent);
+	font-size: 12px;
+	color: var(--color-neutral-500);
 }
 .elev-sm {
 	box-shadow: var(--shadow-sm);
@@ -372,26 +473,22 @@ textarea.input {
 .elev-md {
 	box-shadow: var(--shadow-md);
 }
-.elev-lg {
-	box-shadow: var(--shadow-lg);
-}
 
 /* — tags — */
 .tag {
 	display: inline-flex;
 	align-items: center;
 	font-size: 11px;
-	letter-spacing: 0.02em;
-	padding: 3px 10px;
-	border-radius: calc(var(--radius-md) * 0.75);
+	padding: 4px 11px;
+	border-radius: var(--radius-pill);
 }
 .tag-accent {
 	background: var(--color-accent-800);
 	color: var(--color-accent-100);
 }
 .tag-neutral {
-	background: var(--color-neutral-800);
-	color: var(--color-neutral-100);
+	background: var(--color-neutral-900);
+	color: var(--color-neutral-300);
 }
 .tag-outline {
 	border: 1px solid var(--color-accent);
@@ -406,64 +503,47 @@ textarea.input {
 }
 .table th {
 	text-align: left;
-	font-size: 11px;
-	letter-spacing: 0.08em;
+	font-size: 10px;
+	letter-spacing: 0.14em;
 	text-transform: uppercase;
-	color: color-mix(in srgb, var(--color-text) 60%, transparent);
+	color: var(--color-neutral-600);
 	padding: var(--space-2);
-	border-bottom: 1px solid transparent;
+	border-bottom: 1px solid var(--color-divider);
 }
 .table td {
-	padding: var(--space-2);
-	border-bottom: 1px solid transparent;
+	padding: var(--space-3) var(--space-2);
+	border-bottom: 1px solid var(--color-divider);
 }
-/* Row rules are painted on the row, not the cell, so the end-fade spans the
-   whole row rather than restarting at every column. */
-.table thead tr {
-	background: linear-gradient(
-			to right,
-			transparent,
-			var(--color-divider) 48px,
-			var(--color-divider) calc(100% - 48px),
-			transparent
-		)
-		no-repeat bottom / 100% 1px;
-}
-.table tbody tr {
-	background: linear-gradient(
-			to right,
-			transparent,
-			color-mix(in srgb, var(--color-text) 8%, transparent) 48px,
-			color-mix(in srgb, var(--color-text) 8%, transparent) calc(100% - 48px),
-			transparent
-		)
-		no-repeat bottom / 100% 1px;
+.table tbody tr:last-child td {
+	border-bottom: 0;
 }
 
 /* — dialog — */
 .dialog-backdrop {
 	position: fixed;
 	inset: 0;
-	z-index: 40;
+	z-index: 50;
 	display: grid;
-	place-items: center;
+	place-items: end center;
 	padding: var(--space-4);
-	background: color-mix(in srgb, var(--color-neutral-900) 50%, transparent);
+	background: color-mix(in srgb, #0b0d16 55%, transparent);
 }
 .dialog {
-	width: min(440px, 100%);
+	width: min(520px, 100%);
 	display: flex;
 	flex-direction: column;
 	gap: var(--space-3);
-	padding: var(--space-4);
-	border-radius: var(--radius-lg);
+	padding: 20px;
+	border-radius: var(--radius-xl);
 	background: var(--color-surface);
 	box-shadow: var(--shadow-lg);
+	max-height: 88vh;
+	overflow-y: auto;
 }
 .dialog-title {
 	font-family: var(--font-heading);
 	font-weight: var(--font-heading-weight);
-	font-size: 20px;
+	font-size: 21px;
 }
 .dialog-actions {
 	display: flex;

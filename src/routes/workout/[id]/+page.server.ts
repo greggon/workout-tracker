@@ -13,6 +13,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	);
 
 	return {
+		header: { kicker: day.title, title: `${day.key} day` },
 		day,
 		lastLogs: Object.fromEntries(lastLogPerMovement(getDb(), locals.user.id, movementIds)),
 		loading: {

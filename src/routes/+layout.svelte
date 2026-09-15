@@ -4,10 +4,16 @@
 	import Header from '$lib/shell/Header.svelte';
 	import { provideChrome } from '$lib/shell/chrome.svelte';
 	import { provideOffline } from '$lib/offline/context.svelte';
+	import { provideTheme } from '$lib/theme/theme.svelte';
+	import TabBar from '$lib/shell/TabBar.svelte';
 	import SyncBanner from '$lib/offline/SyncBanner.svelte';
 
 	provideChrome();
 	const { queue } = provideOffline();
+	const theme = provideTheme();
+
+	// Reads the stored choice and follows the OS while `system` is selected.
+	$effect(() => theme.start());
 
 	/**
 	 * Drains on load, whenever the network returns, and whenever the app comes
@@ -53,6 +59,8 @@
 	{@render children()}
 </main>
 
+<TabBar nextDayId={data.nextDayId} />
+
 <footer>
 	<small class="num">
 		{data.build.sha} ·
@@ -74,14 +82,15 @@
 	main {
 		max-width: var(--shell-width);
 		margin: 0 auto;
-		padding: 0 20px var(--space-8);
+		/* Clears the floating tab bar. */
+		padding: 18px 20px 120px;
 		padding-left: max(20px, env(safe-area-inset-left));
 		padding-right: max(20px, env(safe-area-inset-right));
 	}
 
 	footer {
 		max-width: var(--shell-width);
-		margin: var(--space-8) auto 0;
+		margin: 0 auto;
 		/* Nocturne rules fade to transparent over 48px at each end rather
 		   than stopping cleanly. */
 		padding: var(--space-4) 20px;
@@ -89,7 +98,7 @@
 		padding-right: max(20px, env(safe-area-inset-right));
 		/* Carries the clearance main used to hold: screens end in action
 		   buttons that must sit above the home indicator. */
-		padding-bottom: calc(96px + env(safe-area-inset-bottom));
+		padding-bottom: calc(110px + env(safe-area-inset-bottom));
 		background: linear-gradient(
 				to right,
 				transparent,
