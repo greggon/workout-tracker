@@ -44,7 +44,10 @@ type ExerciseSeed = {
 
 type DaySeed = { key: DayKey; title: string; exercises: ExerciseSeed[] };
 
-/** Verbatim from the design's seed(), including the placeholder lower day. */
+/**
+ * Verbatim from the design's seed(), including the placeholder lower day —
+ * except for the landmine row's tool, which the design got wrong.
+ */
 const ROUTINE: DaySeed[] = [
 	{
 		key: 'A',
@@ -52,7 +55,9 @@ const ROUTINE: DaySeed[] = [
 		exercises: [
 			{
 				name: 'Landmine row',
-				tool: 'barbell',
+				// The design recorded this as a barbell, which then asked for
+				// plates either side of a bar that has one end on the floor.
+				tool: 'landmine',
 				weight: 41,
 				sets: 2,
 				reps: 10,

@@ -50,11 +50,23 @@ export const TOOL_SPEC: Record<Tool, ToolSpec> = {
 	landmine: {
 		label: 'Landmine',
 		sleeves: 1,
-		base: 'bar',
+		/*
+		 * No base, despite there being a bar in your hands.
+		 *
+		 * One end of a landmine bar sits in a sleeve on the floor, so the bar's
+		 * own 45 lb is carried by the pivot, not by you — and what little reaches
+		 * the handle depends on the angle, which changes through the rep. Adding
+		 * a flat 45 would describe a lift nobody is doing: a 41 lb row would read
+		 * as "lighter than the bar" and prescribe no plates at all.
+		 *
+		 * So the number on a landmine movement is the iron you hang on the end,
+		 * which is also the number you can actually check at the rack.
+		 */
+		base: 'none',
 		multiplier: 1,
 		added: false,
 		// One sleeve means the whole pile is available to it, not half.
-		hint: 'Bar plus plates on one end only.'
+		hint: 'Plates on one end only. The bar pivots on the floor, so it is not counted.'
 	},
 	ezbar: {
 		label: 'EZ curl bar',

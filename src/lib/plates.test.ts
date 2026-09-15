@@ -153,18 +153,32 @@ describe('the bars', () => {
 	});
 
 	it('puts every landmine plate on one end', () => {
-		// 135 on a landmine is 90 over the bar, all on a single sleeve — not
-		// 45 a side, which is what a barbell would want.
-		const load = describeLoading('landmine', 135, HOME);
-		expect(load).toMatchObject({ sleeves: 1, base: 45, perSleeve: 90 });
-		expect(loadingLabel('landmine', 135, HOME)).toBe('135 lb · 45 + 45 on the end');
+		// 90 on a landmine is 90 on a single sleeve — not 45 a side, which is
+		// what a barbell would want.
+		const load = describeLoading('landmine', 90, HOME);
+		expect(load).toMatchObject({ sleeves: 1, base: 0, perSleeve: 90 });
+		expect(loadingLabel('landmine', 90, HOME)).toBe('90 lb · 45 + 45 on the end');
+	});
+
+	it('ignores the bar on a landmine, because the floor is holding it', () => {
+		// The end of the bar is in a sleeve on the floor, so its 45 lb is not
+		// on the lifter. Counting it made a 41 lb row read "lighter than the
+		// bar" and prescribe nothing — the weight you enter is the iron you
+		// hang, and 41 is three plates off this rack.
+		const load = describeLoading('landmine', 41, HOME);
+		expect(load).toMatchObject({ base: 0, perSleeve: 41, remainder: 0 });
+		expect(loadingLabel('landmine', 41, HOME)).toBe('41 lb · 35 + 5 + 1 on the end');
 	});
 
 	it('lets a landmine draw on the whole pile, since only one end loads', () => {
 		// Four 45s on one end is fine with six in the gym; a barbell could not.
-		const load = describeLoading('landmine', 225, HOME);
+		const load = describeLoading('landmine', 180, HOME);
 		if (load.kind !== 'loaded') throw new Error('unreachable');
 		expect(load.plates.filter((p) => p === 45).length).toBe(4);
+	});
+
+	it('calls an empty landmine unloaded rather than bar only', () => {
+		expect(loadingLabel('landmine', 0, HOME)).toBe('0 lb · unloaded');
 	});
 
 	it('takes 30 lb off an EZ curl bar, not 45', () => {
