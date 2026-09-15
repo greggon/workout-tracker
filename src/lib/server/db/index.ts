@@ -1,23 +1,31 @@
 import { env } from '$env/dynamic/private';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import { createDb } from './client';
+import { createDb, type Db } from './client';
 
-if (!env.DATABASE_URL) throw new Error('DATABASE_URL is not set');
-
-export const db = createDb(env.DATABASE_URL);
+let instance: Db | undefined;
 
 /**
- * Migrations run at import, and this module is imported by hooks.server.ts —
- * so they complete before the server answers its first request. A failure
- * throws and takes the process down, which is what we want: restarting into a
- * crash loop is far easier to notice than quietly serving queries against a
- * schema that is one migration behind.
+ * Opens the database on first use and applies migrations once.
  *
- * Uses drizzle-orm's own migrator rather than the drizzle-kit CLI, because
- * drizzle-kit is a devDependency and `pnpm prune --prod` removes it from the
- * image. The generated SQL in ./drizzle is copied in by the Dockerfile.
+ * Deliberately a function rather than an eagerly-created `db` export: SvelteKit
+ * imports every `+page.server.ts` at build time to read its page options, so a
+ * module-level connection runs during `vite build`. That fails the image build
+ * where DATABASE_URL is unset, and where it is set it would migrate a stray
+ * database into the image layer.
+ *
+ * `hooks.server.ts` calls this from the `init` hook, so migrations still finish
+ * before the server accepts its first request rather than on a user's request.
  */
-migrate(db, { migrationsFolder: env.MIGRATIONS_DIR ?? 'drizzle' });
+export function getDb(): Db {
+	if (instance) return instance;
+
+	if (!env.DATABASE_URL) throw new Error('DATABASE_URL is not set');
+	const db = createDb(env.DATABASE_URL);
+	migrate(db, { migrationsFolder: env.MIGRATIONS_DIR ?? 'drizzle' });
+
+	instance = db;
+	return instance;
+}
 
 export * from './schema';
-export type { Db } from './client';
+export type { Db, Queryable, Tx } from './client';

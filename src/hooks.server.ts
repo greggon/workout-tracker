@@ -1,6 +1,6 @@
 import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
-import type { Handle } from '@sveltejs/kit';
+import type { Handle, ServerInit } from '@sveltejs/kit';
 import {
 	ACCESS_JWT_HEADER,
 	AuthError,
@@ -9,7 +9,7 @@ import {
 	verifyAccessToken,
 	type VerifyOptions
 } from '$lib/server/auth';
-import { db } from '$lib/server/db';
+import { getDb } from '$lib/server/db';
 import { resolveUser } from '$lib/server/users';
 
 /**
@@ -83,6 +83,14 @@ async function authenticate(request: Request): Promise<string> {
 	return email;
 }
 
+/**
+ * Opens the database and runs migrations once, before the first request is
+ * served. Build-time module loading never reaches this.
+ */
+export const init: ServerInit = async () => {
+	getDb();
+};
+
 export const handle: Handle = async ({ event, resolve }) => {
 	let email: string;
 	try {
@@ -97,6 +105,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 		throw cause; // misconfiguration — a 500 is correct and should be noisy
 	}
 
-	event.locals.user = resolveUser(db, email);
+	event.locals.user = resolveUser(getDb(), email);
 	return resolve(event);
 };

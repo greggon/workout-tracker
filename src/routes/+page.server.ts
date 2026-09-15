@@ -1,4 +1,4 @@
-import { db } from '$lib/server/db';
+import { getDb } from '$lib/server/db';
 import { countSessions, lastSessionPerDay, listDays, recentSessions } from '$lib/server/routine';
 import { plannedSets, plannedVolume, rotateFrom } from '$lib/volume';
 import type { PageServerLoad } from './$types';
@@ -6,9 +6,9 @@ import type { PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ locals }) => {
 	const userId = locals.user.id;
 
-	const days = listDays(db, userId);
+	const days = listDays(getDb(), userId);
 	const lastPerDay = lastSessionPerDay(
-		db,
+		getDb(),
 		userId,
 		days.map((d) => d.key)
 	);
@@ -23,7 +23,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		}
 	}
 
-	const recent = recentSessions(db, userId, 4);
+	const recent = recentSessions(getDb(), userId, 4);
 
 	return {
 		days: rotateFrom(days, lastKey).map((day) => {
@@ -50,7 +50,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		lastAt: lastAt === -Infinity ? null : lastAt,
 		splitSize: days.length,
 		stats: {
-			sessionCount: countSessions(db, userId),
+			sessionCount: countSessions(getDb(), userId),
 			avgVolume: recent.length ? recent.reduce((a, r) => a + r.volume, 0) / recent.length : 0,
 			avgMins: recent.length ? recent.reduce((a, r) => a + r.durationMins, 0) / recent.length : 0,
 			sampleSize: recent.length

@@ -1,6 +1,6 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { and, eq, isNull, or } from 'drizzle-orm';
-import { db } from '$lib/server/db';
+import { getDb } from '$lib/server/db';
 import { days, movements } from '$lib/server/db/schema';
 import { listDays } from '$lib/server/routine';
 import { saveDay, type ExerciseInput } from '$lib/server/routine-edit';
@@ -8,11 +8,11 @@ import { TOOLS, type Tool } from '$lib/types';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
-	const day = listDays(db, locals.user.id).find((d) => d.id === params.id);
+	const day = listDays(getDb(), locals.user.id).find((d) => d.id === params.id);
 	if (!day) error(404, 'No such day');
 
 	// Typeahead source: the shared catalog plus this account's own movements.
-	const catalog = db
+	const catalog = getDb()
 		.select({ name: movements.name, defaultTool: movements.defaultTool })
 		.from(movements)
 		.where(or(isNull(movements.ownerUserId), eq(movements.ownerUserId, locals.user.id)))
@@ -30,7 +30,7 @@ function parseTool(value: FormDataEntryValue | null, fallback: Tool): Tool {
 export const actions: Actions = {
 	save: async ({ request, params, locals }) => {
 		const form = await request.formData();
-		const owned = db
+		const owned = getDb()
 			.select({ id: days.id })
 			.from(days)
 			.where(and(eq(days.id, params.id), eq(days.userId, locals.user.id)))
@@ -59,7 +59,7 @@ export const actions: Actions = {
 		}
 
 		try {
-			saveDay(db, locals.user.id, params.id, String(form.get('title') ?? ''), exercises);
+			saveDay(getDb(), locals.user.id, params.id, String(form.get('title') ?? ''), exercises);
 		} catch (e) {
 			return fail(400, { message: (e as Error).message });
 		}
