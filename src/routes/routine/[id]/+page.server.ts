@@ -19,7 +19,15 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		.orderBy(movements.name)
 		.all();
 
-	return { day, catalog };
+	return {
+		day,
+		catalog,
+		loading: {
+			barWeight: locals.user.barWeight,
+			ezBarWeight: locals.user.ezBarWeight,
+			inventory: locals.user.plateInventory
+		}
+	};
 };
 
 function parseTool(value: FormDataEntryValue | null, fallback: Tool): Tool {

@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `ez_bar_weight` real DEFAULT 30 NOT NULL;

@@ -9,5 +9,5 @@
 </svelte:head>
 
 {#key data.day.id}
-	<DayEditor day={data.day} catalog={data.catalog} {form} />
+	<DayEditor day={data.day} catalog={data.catalog} loading={data.loading} {form} />
 {/key}

@@ -26,6 +26,26 @@ export function createDb(url: string) {
 
 export type Db = ReturnType<typeof createDb>;
 
+/**
+ * Runs `fn` with foreign key enforcement off, then restores it.
+ *
+ * SQLite cannot alter a column in place, so drizzle migrates by building a new
+ * table, copying rows across, and dropping the old one. Every child table
+ * cascades off that drop unless enforcement is disabled first — and while the
+ * generated migration does say `PRAGMA foreign_keys=OFF`, SQLite *silently
+ * ignores* that pragma inside a transaction, which is exactly where the
+ * migrator runs it. Disabling it out here, before the transaction opens, is the
+ * only thing that actually takes effect.
+ */
+export function withForeignKeysDisabled<T>(db: Db, fn: () => T): T {
+	db.$client.pragma('foreign_keys = OFF');
+	try {
+		return fn();
+	} finally {
+		db.$client.pragma('foreign_keys = ON');
+	}
+}
+
 /** The handle drizzle hands to a `db.transaction()` callback. */
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 

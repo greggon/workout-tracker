@@ -1,4 +1,4 @@
-import type { Tool } from './types';
+import { TOOL_SPEC, type Tool } from './types';
 
 /**
  * Volume and display maths, shared by the server (computing session totals)
@@ -11,7 +11,7 @@ import type { Tool } from './types';
  * Every other tool moves a single load.
  */
 export function toolMultiplier(tool: Tool): number {
-	return tool === 'dumbbell' ? 2 : 1;
+	return TOOL_SPEC[tool].multiplier;
 }
 
 /** One loaded implement within an exercise: the main movement or its pair. */

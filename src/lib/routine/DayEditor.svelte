@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { loadingLabel, type LoadingConfig } from '$lib/plates';
+	import PlateDiagram from '$lib/workout/PlateDiagram.svelte';
 	import { TOOLS, TOOL_LABELS, type Tool } from '$lib/types';
 
 	type Movement = { movementId: string; name: string; tool: Tool; weight: number };
@@ -15,6 +17,7 @@
 	type Props = {
 		day: { key: string; title: string; exercises: Exercise[] };
 		catalog: { name: string; defaultTool: Tool }[];
+		loading: LoadingConfig;
 		form: { message?: string } | null;
 	};
 
@@ -24,7 +27,7 @@
 	 * user's hands when the page data revalidates — so switching days has to
 	 * remount rather than reassign.
 	 */
-	let { day, catalog, form }: Props = $props();
+	let { day, catalog, loading, form }: Props = $props();
 
 	type Row = {
 		id: string | null;
@@ -178,6 +181,11 @@
 							bind:value={row.weight}
 						/>
 					</label>
+
+					<div class="load">
+						<PlateDiagram tool={row.tool} weight={row.weight} config={loading} />
+						<span class="load-text num">{loadingLabel(row.tool, row.weight, loading)}</span>
+					</div>
 				</div>
 
 				{#if row.pairName}
@@ -212,6 +220,13 @@
 								bind:value={row.pairWeight}
 							/>
 						</label>
+
+						<div class="load">
+							<PlateDiagram tool={row.pairTool} weight={row.pairWeight} config={loading} />
+							<span class="load-text num"
+								>{loadingLabel(row.pairTool, row.pairWeight, loading)}</span
+							>
+						</div>
 					</div>
 				{/if}
 
@@ -351,6 +366,19 @@
 	.paired {
 		padding-left: 14px;
 		border-left: 2px solid var(--color-accent-700);
+	}
+
+	.load {
+		flex: 1 1 100%;
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		min-width: 0;
+	}
+	.load-text {
+		font-size: 11.5px;
+		color: var(--color-neutral-500);
+		min-width: 0;
 	}
 
 	.field {

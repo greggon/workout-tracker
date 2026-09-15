@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { index, integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
-import type { DayKey, Tool } from '../../types';
+import { DEFAULT_PLATE_STOCK, type DayKey, type PlateStock, type Tool } from '../../types';
 
 /**
  * All weights are stored in pounds. Both accounts lift in lbs, so there is no
@@ -29,13 +29,13 @@ export const users = sqliteTable('users', {
 	displayName: text('display_name').notNull().default(''),
 	/** Weight of an empty barbell, subtracted before the per-side plate fill. */
 	barWeight: real('bar_weight').notNull().default(45),
-	/** Weight of an empty adjustable dumbbell handle. */
-	handleWeight: real('handle_weight').notNull().default(5),
-	/** Plate denominations this person actually owns, heaviest first. */
+	/** Weight of the empty EZ curl bar. */
+	ezBarWeight: real('ez_bar_weight').notNull().default(30),
+	/** Plates this person owns, with quantities. Heaviest first. */
 	plateInventory: text('plate_inventory', { mode: 'json' })
-		.$type<number[]>()
+		.$type<PlateStock[]>()
 		.notNull()
-		.default([45, 35, 25, 10, 5, 2.5]),
+		.default(DEFAULT_PLATE_STOCK),
 	createdAt: createdAt()
 });
 

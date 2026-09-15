@@ -8,6 +8,34 @@
       "when": 1789422183538,
       "tag": "0000_spotty_scourge",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1789438679256,
+      "tag": "0001_adorable_ezekiel",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789439541173,
+      "tag": "0002_naive_selene",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1789439542241,
+      "tag": "0003_flaky_grandmaster",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1789439982986,
+      "tag": "0004_ordinary_moonstone",
+      "breakpoints": true
     }
   ]
 }

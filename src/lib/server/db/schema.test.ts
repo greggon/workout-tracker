@@ -1,7 +1,8 @@
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { eq, sql } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createDb, type Db } from './client';
+import { DEFAULT_PLATE_STOCK } from '$lib/types';
+import { createDb, withForeignKeysDisabled, type Db } from './client';
 import { dayExercises, days, movements, sessions, setLogs, users } from './schema';
 
 /**
@@ -234,6 +235,36 @@ describe('defaults', () => {
 		const { userId } = fixture();
 		const user = db.select().from(users).where(eq(users.id, userId)).get()!;
 		expect(user.barWeight).toBe(45);
-		expect(user.plateInventory).toEqual([45, 35, 25, 10, 5, 2.5]);
+		expect(user.ezBarWeight).toBe(30);
+		// The shared gym, not a hypothetical commercial rack.
+		expect(user.plateInventory).toEqual(DEFAULT_PLATE_STOCK);
+	});
+});
+
+describe('migrations must not cascade data away', () => {
+	it('keeps child rows when a parent table is rebuilt', () => {
+		// SQLite rebuilds a table to change a column: new table, copy, drop old.
+		// With enforcement on, that drop takes every child row with it — which is
+		// precisely how a migration once emptied days, sessions and set_logs.
+		fixture();
+		expect(countSetLogs()).toBe(1);
+
+		withForeignKeysDisabled(db, () => {
+			db.$client.exec(`
+				CREATE TABLE __new_users AS SELECT * FROM users;
+				DROP TABLE users;
+				ALTER TABLE __new_users RENAME TO users;
+			`);
+		});
+
+		expect(countSetLogs()).toBe(1);
+		expect(db.select().from(sessions).all()).toHaveLength(1);
+		expect(db.select().from(days).all()).toHaveLength(1);
+	});
+
+	it('still cascades during normal operation', () => {
+		const { userId } = fixture();
+		db.delete(users).where(eq(users.id, userId)).run();
+		expect(countSetLogs()).toBe(0);
 	});
 });

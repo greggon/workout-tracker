@@ -174,6 +174,22 @@ function main() {
 	}
 
 	db.transaction((tx) => {
+		// Equipment is configured by hand and has nothing to do with the demo
+		// routine, so carry it across rather than making the user re-enter their
+		// plate counts every time they reseed.
+		const equipment = new Map(
+			tx
+				.select({
+					email: users.email,
+					barWeight: users.barWeight,
+					ezBarWeight: users.ezBarWeight,
+					plateInventory: users.plateInventory
+				})
+				.from(users)
+				.all()
+				.map((u) => [u.email, u])
+		);
+
 		// Children first — foreign_keys is ON, and cascades only fire on parent deletes.
 		tx.delete(setLogs).run();
 		tx.delete(sessions).run();
@@ -202,8 +218,20 @@ function main() {
 
 		for (const account of accounts) {
 			const userId = crypto.randomUUID();
+			const kept = equipment.get(account.email);
 			tx.insert(users)
-				.values({ id: userId, email: account.email, displayName: account.displayName })
+				.values({
+					id: userId,
+					email: account.email,
+					displayName: account.displayName,
+					...(kept
+						? {
+								barWeight: kept.barWeight,
+								ezBarWeight: kept.ezBarWeight,
+								plateInventory: kept.plateInventory
+							}
+						: {})
+				})
 				.run();
 
 			for (const [dayIndex, daySeed] of ROUTINE.entries()) {
@@ -308,6 +336,8 @@ function main() {
 		console.log(`  days         ${accounts.length * ROUTINE.length}`);
 		console.log(`  sessions     ${sessionCount}`);
 		console.log(`  set_logs     ${setLogCount}`);
+		if (equipment.size > 0)
+			console.log(`  equipment    carried over for ${equipment.size} account(s)`);
 	});
 }
 

@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import type { Db } from './db/client';
+import type { PlateStock } from '$lib/types';
 import { users, type User } from './db/schema';
 
 /** "ada.lovelace@example.com" → "Ada Lovelace" */
@@ -35,4 +36,22 @@ export function resolveUser(db: Db, email: string): User {
 	const created = db.select().from(users).where(eq(users.email, normalised)).get();
 	if (!created) throw new Error(`Failed to provision account for ${normalised}`);
 	return created;
+}
+
+export type Settings = {
+	barWeight: number;
+	ezBarWeight: number;
+	plateInventory: PlateStock[];
+};
+
+/** Equipment settings. Weights are clamped to something physically sane. */
+export function updateSettings(db: Db, userId: string, settings: Settings): void {
+	db.update(users)
+		.set({
+			barWeight: Math.max(0, settings.barWeight),
+			ezBarWeight: Math.max(0, settings.ezBarWeight),
+			plateInventory: settings.plateInventory
+		})
+		.where(eq(users.id, userId))
+		.run();
 }

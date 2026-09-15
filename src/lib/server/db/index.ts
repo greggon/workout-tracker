@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/private';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import { createDb, type Db } from './client';
+import { createDb, withForeignKeysDisabled, type Db } from './client';
 
 let instance: Db | undefined;
 
@@ -21,7 +21,19 @@ export function getDb(): Db {
 
 	if (!env.DATABASE_URL) throw new Error('DATABASE_URL is not set');
 	const db = createDb(env.DATABASE_URL);
-	migrate(db, { migrationsFolder: env.MIGRATIONS_DIR ?? 'drizzle' });
+
+	// See withForeignKeysDisabled: a table rebuild would otherwise cascade every
+	// child row away. This is not a theoretical risk — it happened once.
+	withForeignKeysDisabled(db, () =>
+		migrate(db, { migrationsFolder: env.MIGRATIONS_DIR ?? 'drizzle' })
+	);
+
+	const orphans = db.$client.pragma('foreign_key_check') as unknown[];
+	if (orphans.length > 0) {
+		throw new Error(
+			`Migration left ${orphans.length} row(s) with a broken foreign key; refusing to serve.`
+		);
+	}
 
 	instance = db;
 	return instance;

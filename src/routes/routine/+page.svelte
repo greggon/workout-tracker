@@ -36,6 +36,7 @@
 
 <div class="head">
 	<h2>My routine</h2>
+	<a class="btn btn-ghost" href={resolve('/settings')}>Equipment</a>
 	<a class="btn btn-ghost" href={resolve('/')}>Done</a>
 </div>
 
