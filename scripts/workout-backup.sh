@@ -83,6 +83,10 @@ log "dump holds ${sessions} session(s), ${set_logs} logged set(s)"
 # went wrong and this run must not quietly overwrite the good history with it —
 # seven nightly retentions would otherwise age out every usable snapshot.
 MIN_EXPECTED="${MIN_EXPECTED_ROWS:-1}"
+if [ "$MIN_EXPECTED" -le 0 ]; then
+	# Nagging every night beats a guard everyone forgot to turn on.
+	log "WARNING: MIN_EXPECTED_ROWS is 0, so a wiped database would be backed up"
+fi
 if [ "$set_logs" -lt "$MIN_EXPECTED" ]; then
 	echo "refusing to back up: only ${set_logs} logged sets, expected at least ${MIN_EXPECTED}" >&2
 	echo "set MIN_EXPECTED_ROWS=0 to override if this is genuinely a fresh install" >&2

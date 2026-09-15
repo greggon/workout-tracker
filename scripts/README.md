@@ -60,9 +60,13 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now workout-backup.timer workout-restore-check.timer
 ```
 
-From a development machine, `pnpm deploy:scripts` pushes updates to these
-scripts, `pnpm backup:now` runs a backup, and `pnpm backup:check` runs the
-restore drill.
+`pnpm deploy` pushes these scripts before it uses them, so the Pi only needs
+the directory to exist. `pnpm deploy:scripts` pushes them on their own,
+`pnpm backup:now` runs a backup, and `pnpm backup:check` runs the restore drill.
+
+**`MIN_EXPECTED_ROWS` ships at 0** so the first backup on an empty database
+does not block the first deploy. Raise it once you have real history — the
+nightly log warns until you do.
 
 ## Restoring
 
