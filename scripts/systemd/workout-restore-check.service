@@ -1,0 +1,12 @@
+[Unit]
+Description=Workout tracker restore verification
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=greggon
+EnvironmentFile=/etc/workout-backup.env
+ExecStart=/home/greggon/apps/workout/scripts/workout-restore-check.sh
+Nice=10
+IOSchedulingClass=idle

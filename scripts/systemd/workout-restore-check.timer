@@ -1,0 +1,10 @@
+[Unit]
+Description=Weekly workout tracker restore verification
+
+[Timer]
+OnCalendar=Sun *-*-* 04:53:00
+Persistent=true
+RandomizedDelaySec=30m
+
+[Install]
+WantedBy=timers.target

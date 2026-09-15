@@ -1,0 +1,13 @@
+[Unit]
+Description=Workout tracker backup
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=greggon
+EnvironmentFile=/etc/workout-backup.env
+ExecStart=/home/greggon/apps/workout/scripts/workout-backup.sh
+# Backups compete with nothing; let them take their time politely.
+Nice=10
+IOSchedulingClass=idle

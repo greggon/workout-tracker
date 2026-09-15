@@ -1,0 +1,12 @@
+[Unit]
+Description=Nightly workout tracker backup
+
+[Timer]
+# Half an hour after the hsa backup, so the two never contend for the SD card.
+OnCalendar=*-*-* 03:47:00
+# Catch up after the Pi has been off, rather than silently skipping a night.
+Persistent=true
+RandomizedDelaySec=15m
+
+[Install]
+WantedBy=timers.target
