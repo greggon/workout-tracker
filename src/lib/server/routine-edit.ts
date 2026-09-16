@@ -21,9 +21,51 @@ function nextFreeKey(used: Set<string>): DayKey {
 }
 
 /**
- * Finds a movement by name, preferring the shared catalog, and creates a
- * private one for this account if the name is new. Matching is
- * case-insensitive so "Hack Squat" does not become a second "Hack squat".
+ * Name → movement id, for one save.
+ *
+ * The catalog is read once and kept in a map: saving a day resolves a name per
+ * exercise, and each of those was re-reading every movement this account can
+ * see. Names it creates go into the map too, so two rows naming the same new
+ * movement share one, exactly as two calls against the database would have.
+ *
+ * Matching is case-insensitive, so "Hack Squat" does not become a second "Hack
+ * squat", and the shared catalog wins over a private duplicate of the same name.
+ */
+function movementResolver(db: Queryable, userId: string) {
+	const candidates = db
+		.select({ id: movements.id, name: movements.name, ownerUserId: movements.ownerUserId })
+		.from(movements)
+		.where(or(isNull(movements.ownerUserId), eq(movements.ownerUserId, userId)))
+		.all();
+
+	const byName = new Map<string, string>();
+	// Private first, then global over the top: the last write wins, so the
+	// shared catalog's id is the one that survives for a name owned by both.
+	for (const m of candidates.filter((m) => m.ownerUserId !== null)) {
+		byName.set(m.name.toLowerCase(), m.id);
+	}
+	for (const m of candidates.filter((m) => m.ownerUserId === null)) {
+		byName.set(m.name.toLowerCase(), m.id);
+	}
+
+	return (name: string, defaultTool: Tool): string => {
+		const trimmed = name.trim();
+		if (!trimmed) throw new Error('A movement needs a name');
+
+		const lowered = trimmed.toLowerCase();
+		const known = byName.get(lowered);
+		if (known) return known;
+
+		const id = crypto.randomUUID();
+		db.insert(movements).values({ id, name: trimmed, ownerUserId: userId, defaultTool }).run();
+		byName.set(lowered, id);
+		return id;
+	};
+}
+
+/**
+ * Finds a movement by name, creating a private one for this account if the name
+ * is new. A single lookup; `saveDay` builds one resolver for the whole save.
  */
 export function resolveMovementId(
 	db: Queryable,
@@ -31,25 +73,7 @@ export function resolveMovementId(
 	name: string,
 	defaultTool: Tool
 ): string {
-	const trimmed = name.trim();
-	if (!trimmed) throw new Error('A movement needs a name');
-
-	const candidates = db
-		.select({ id: movements.id, name: movements.name, ownerUserId: movements.ownerUserId })
-		.from(movements)
-		.where(or(isNull(movements.ownerUserId), eq(movements.ownerUserId, userId)))
-		.all();
-
-	const lowered = trimmed.toLowerCase();
-	// Shared catalog wins over a private duplicate.
-	const match =
-		candidates.find((m) => m.ownerUserId === null && m.name.toLowerCase() === lowered) ??
-		candidates.find((m) => m.name.toLowerCase() === lowered);
-	if (match) return match.id;
-
-	const id = crypto.randomUUID();
-	db.insert(movements).values({ id, name: trimmed, ownerUserId: userId, defaultTool }).run();
-	return id;
+	return movementResolver(db, userId)(name, defaultTool);
 }
 
 /** Grows or shrinks the rotation, keeping existing days untouched. */
@@ -153,12 +177,13 @@ export function saveDay(
 			tx.delete(dayExercises).where(inArray(dayExercises.id, removed)).run();
 		}
 
+		const resolve = movementResolver(tx, userId);
+
 		exercises.forEach((ex, position) => {
-			const movementId = resolveMovementId(tx, userId, ex.name, ex.tool);
-			const hasPair = Boolean(ex.pairName && ex.pairName.trim());
-			const pairMovementId = hasPair
-				? resolveMovementId(tx, userId, ex.pairName!, ex.pairTool ?? ex.tool)
-				: null;
+			const movementId = resolve(ex.name, ex.tool);
+			const pairName = ex.pairName?.trim() ?? '';
+			const hasPair = pairName !== '';
+			const pairMovementId = hasPair ? resolve(pairName, ex.pairTool ?? ex.tool) : null;
 
 			const values = {
 				dayId,

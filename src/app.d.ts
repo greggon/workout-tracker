@@ -12,7 +12,13 @@ declare global {
 			user: import('$lib/server/db/schema').User;
 		}
 		// interface Error {}
-		// interface PageData {}
+		interface PageData {
+			/**
+			 * Title, kicker and back link for the app header. Every route's load
+			 * supplies one; see $lib/shell/page-header.
+			 */
+			header?: import('$lib/shell/page-header').PageHeader;
+		}
 		// interface PageState {}
 		// interface Platform {}
 	}

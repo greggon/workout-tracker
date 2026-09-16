@@ -2,6 +2,7 @@ import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db';
 import { lastLogPerMovement, listDays } from '$lib/server/routine';
 import type { PageServerLoad } from './$types';
+import type { PageHeader } from '$lib/shell/page-header';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const day = listDays(getDb(), locals.user.id).find((d) => d.id === params.id);
@@ -13,7 +14,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	);
 
 	return {
-		header: { kicker: day.title, title: `${day.key} day` },
+		header: { kicker: day.title, title: `${day.key} day` } satisfies PageHeader,
 		day,
 		lastLogs: Object.fromEntries(lastLogPerMovement(getDb(), locals.user.id, movementIds)),
 		loading: {

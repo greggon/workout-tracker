@@ -25,12 +25,12 @@
 		return { high, low: high === low ? low - 1 : low };
 	});
 
-	const x = $derived((i: number) =>
-		points.length < 2 ? W / 2 : PAD + (i * (W - PAD * 2)) / (points.length - 1)
-	);
-	const y = $derived(
-		(value: number) => H - PAD - ((value - bounds.low) / (bounds.high - bounds.low)) * (H - PAD * 2)
-	);
+	/* Plain functions: they read reactive state when called, so wrapping them in
+	   $derived rebuilt the closure on every change without memoising anything. */
+	const x = (i: number) =>
+		points.length < 2 ? W / 2 : PAD + (i * (W - PAD * 2)) / (points.length - 1);
+	const y = (value: number) =>
+		H - PAD - ((value - bounds.low) / (bounds.high - bounds.low)) * (H - PAD * 2);
 
 	const plotted = $derived(points.map((p, i) => ({ ...p, cx: x(i), cy: y(p.value) })));
 

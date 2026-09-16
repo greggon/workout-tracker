@@ -82,7 +82,7 @@
 		<ul class="rotation">
 			{#each later as day (day.id)}
 				<li>
-					<a class="row" href={resolve('/workout/[id]', { id: day.id })}>
+					<a class="row-card" href={resolve('/workout/[id]', { id: day.id })}>
 						<span class="badge badge-quiet">{day.key}</span>
 						<span class="row-text">
 							<span class="row-title">{day.title}</span>
@@ -263,17 +263,6 @@
 		flex-direction: column;
 		gap: 10px;
 	}
-	.row {
-		display: flex;
-		align-items: center;
-		gap: 13px;
-		background: var(--color-surface);
-		border-radius: var(--radius-lg);
-		padding: 14px 16px;
-		box-shadow: var(--shadow-sm);
-		color: inherit;
-		text-decoration: none;
-	}
 	.row-text {
 		flex: 1;
 		min-width: 0;
@@ -293,22 +282,5 @@
 		font-size: 12px;
 		color: var(--color-neutral-500);
 		margin-top: 2px;
-	}
-	.chev {
-		flex: none;
-		color: var(--color-neutral-600);
-		transition: color 0.12s ease;
-	}
-
-	/* A pointer wants to know a row is clickable before it clicks it; touch
-	   finds out by pressing. */
-	@media (hover: hover) and (pointer: fine) {
-		.row:hover {
-			background: color-mix(in srgb, var(--color-accent) 7%, var(--color-surface));
-			box-shadow: var(--shadow-md);
-		}
-		.row:hover .chev {
-			color: var(--color-accent);
-		}
 	}
 </style>

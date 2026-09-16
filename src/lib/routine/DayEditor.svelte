@@ -29,14 +29,18 @@
 	 */
 	let { day, catalog, loading, form }: Props = $props();
 
+	/** One half of an exercise: the main movement, or its superset partner. */
+	type MovementFields = { name: string; tool: Tool; weight: number };
+
 	type Row = {
 		id: string | null;
-		name: string;
-		tool: Tool;
-		weight: number;
-		pairName: string;
-		pairTool: Tool;
-		pairWeight: number;
+		main: MovementFields;
+		/**
+		 * Null when the exercise is not a superset. Previously this was a flat
+		 * `pairName` string whose "paired but unnamed" state was a single space —
+		 * a sentinel that worked only because the server trims. Null says it.
+		 */
+		pair: MovementFields | null;
 		sets: number;
 		reps: number;
 		note: string;
@@ -45,12 +49,8 @@
 	function toRow(ex: Exercise): Row {
 		return {
 			id: ex.id,
-			name: ex.main.name,
-			tool: ex.main.tool,
-			weight: ex.main.weight,
-			pairName: ex.pair?.name ?? '',
-			pairTool: ex.pair?.tool ?? ex.main.tool,
-			pairWeight: ex.pair?.weight ?? ex.main.weight,
+			main: { name: ex.main.name, tool: ex.main.tool, weight: ex.main.weight },
+			pair: ex.pair ? { name: ex.pair.name, tool: ex.pair.tool, weight: ex.pair.weight } : null,
 			sets: ex.sets,
 			reps: ex.reps,
 			note: ex.note
@@ -62,17 +62,24 @@
 	// svelte-ignore state_referenced_locally
 	let rows = $state<Row[]>(day.exercises.map(toRow));
 
+	/** Movement id per saved row, so the History link is a lookup, not a scan. */
+	// svelte-ignore state_referenced_locally
+	const movementIds = new Map(day.exercises.map((ex) => [ex.id, ex.main.movementId]));
+
+	/** The form field names the save action reads for each half of a row. */
+	function fieldNames(i: number, paired: boolean) {
+		return paired
+			? { name: `pairName-${i}`, tool: `pairTool-${i}`, weight: `pairWeight-${i}` }
+			: { name: `name-${i}`, tool: `tool-${i}`, weight: `weight-${i}` };
+	}
+
 	function addRow() {
 		rows = [
 			...rows,
 			{
 				id: null,
-				name: '',
-				tool: 'barbell',
-				weight: 45,
-				pairName: '',
-				pairTool: 'barbell',
-				pairWeight: 45,
+				main: { name: '', tool: 'barbell', weight: 45 },
+				pair: null,
 				sets: 2,
 				reps: 10,
 				note: ''
@@ -92,12 +99,64 @@
 		rows = next;
 	}
 
+	/**
+	 * A new pair starts from the main movement's tool and weight — a superset
+	 * partner is usually the same kind of implement, and it is a better first
+	 * guess than a barbell at 45.
+	 */
 	function togglePair(i: number) {
-		const next = [...rows];
-		next[i] = { ...next[i], pairName: next[i].pairName ? '' : ' ' };
-		rows = next;
+		const row = rows[i];
+		row.pair = row.pair ? null : { name: '', tool: row.main.tool, weight: row.main.weight };
 	}
 </script>
+
+<!--
+	Both halves of an exercise render the same four controls; only the labels and
+	the form field names differ. They were written out twice, sixty lines apart,
+	which is how a fix to one of them misses the other.
+-->
+{#snippet movementFields(movement: MovementFields, i: number, paired: boolean)}
+	{@const names = fieldNames(i, paired)}
+	<div class="movement" class:paired>
+		<label class="field">
+			<span>{paired ? 'Paired with' : 'Movement'}</span>
+			<input
+				class="input"
+				name={names.name}
+				list="movement-names"
+				bind:value={movement.name}
+				placeholder={paired ? 'Second movement' : 'Movement name'}
+			/>
+		</label>
+		<label class="field tool">
+			<span>Tool</span>
+			<select class="input" name={names.tool} bind:value={movement.tool}>
+				{#each TOOLS as tool (tool)}
+					<option value={tool}>{TOOL_LABELS[tool]}</option>
+				{/each}
+			</select>
+		</label>
+		<label class="field short">
+			<span>Weight</span>
+			<input
+				class="input num"
+				type="number"
+				step="0.5"
+				min="0"
+				inputmode="decimal"
+				name={names.weight}
+				bind:value={movement.weight}
+			/>
+		</label>
+
+		<div class="load">
+			<span class="art">
+				<PlateDiagram tool={movement.tool} weight={movement.weight} config={loading} />
+			</span>
+			<span class="load-text num">{loadingLabel(movement.tool, movement.weight, loading)}</span>
+		</div>
+	</div>
+{/snippet}
 
 <datalist id="movement-names">
 	{#each catalog as m (m.name)}
@@ -145,11 +204,11 @@
 						>
 					</div>
 					<span class="index num">{i + 1}</span>
-					{#if row.id}
+					{#if row.id && movementIds.has(row.id)}
 						<a
 							class="btn btn-ghost history"
 							href="{resolve('/movements/[id]', {
-								id: day.exercises.find((e) => e.id === row.id)?.main.movementId ?? ''
+								id: movementIds.get(row.id)!
 							})}?back={encodeURIComponent(resolve('/routine'))}"
 						>
 							History
@@ -160,88 +219,10 @@
 					</button>
 				</div>
 
-				<div class="movement">
-					<label class="field">
-						<span>Movement</span>
-						<input
-							class="input"
-							name="name-{i}"
-							list="movement-names"
-							bind:value={row.name}
-							placeholder="Movement name"
-						/>
-					</label>
-					<label class="field tool">
-						<span>Tool</span>
-						<select class="input" name="tool-{i}" bind:value={row.tool}>
-							{#each TOOLS as tool (tool)}
-								<option value={tool}>{TOOL_LABELS[tool]}</option>
-							{/each}
-						</select>
-					</label>
-					<label class="field short">
-						<span>Weight</span>
-						<input
-							class="input num"
-							type="number"
-							step="0.5"
-							min="0"
-							inputmode="decimal"
-							name="weight-{i}"
-							bind:value={row.weight}
-						/>
-					</label>
+				{@render movementFields(row.main, i, false)}
 
-					<div class="load">
-						<span class="art">
-							<PlateDiagram tool={row.tool} weight={row.weight} config={loading} />
-						</span>
-						<span class="load-text num">{loadingLabel(row.tool, row.weight, loading)}</span>
-					</div>
-				</div>
-
-				{#if row.pairName}
-					<div class="movement paired">
-						<label class="field">
-							<span>Paired with</span>
-							<input
-								class="input"
-								name="pairName-{i}"
-								list="movement-names"
-								bind:value={row.pairName}
-								placeholder="Second movement"
-							/>
-						</label>
-						<label class="field tool">
-							<span>Tool</span>
-							<select class="input" name="pairTool-{i}" bind:value={row.pairTool}>
-								{#each TOOLS as tool (tool)}
-									<option value={tool}>{TOOL_LABELS[tool]}</option>
-								{/each}
-							</select>
-						</label>
-						<label class="field short">
-							<span>Weight</span>
-							<input
-								class="input num"
-								type="number"
-								step="0.5"
-								min="0"
-								inputmode="decimal"
-								name="pairWeight-{i}"
-								bind:value={row.pairWeight}
-							/>
-						</label>
-
-						<div class="load">
-							<span class="art">
-								<PlateDiagram tool={row.pairTool} weight={row.pairWeight} config={loading} />
-							</span>
-							<span class="load-text num"
-								>{loadingLabel(row.pairTool, row.pairWeight, loading)}</span
-							>
-						</div>
-					</div>
+				{#if row.pair}
+					{@render movementFields(row.pair, i, true)}
 				{/if}
 
 				<div class="prescription">
@@ -277,7 +258,7 @@
 						/>
 					</label>
 					<button type="button" class="btn btn-secondary pair-toggle" onclick={() => togglePair(i)}>
-						{row.pairName ? 'Unpair' : 'Pair'}
+						{row.pair ? 'Unpair' : 'Pair'}
 					</button>
 				</div>
 			</li>

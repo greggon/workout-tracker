@@ -27,7 +27,7 @@ export type Submit = (payload: SessionInput) => Promise<{
 }>;
 
 /** Submits through the real endpoint, classifying the answer rather than trusting it. */
-export const httpSubmit: Submit = async (payload) => {
+const httpSubmit: Submit = async (payload) => {
 	const response = await fetch('/api/sessions', {
 		method: 'POST',
 		headers: { 'content-type': 'application/json' },

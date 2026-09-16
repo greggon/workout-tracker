@@ -2,6 +2,7 @@ import { desc, eq, sql } from 'drizzle-orm';
 import { getDb } from '$lib/server/db';
 import { movements, sessions, setLogs } from '$lib/server/db/schema';
 import type { PageServerLoad } from './$types';
+import type { PageHeader } from '$lib/shell/page-header';
 
 /** Every movement this account has ever logged, most recently trained first. */
 export const load: PageServerLoad = async ({ locals }) => {
@@ -22,7 +23,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		.all();
 
 	return {
-		header: { kicker: 'Every movement', title: 'History', back: '/' },
+		header: { kicker: 'Every movement', title: 'History', back: '/' } satisfies PageHeader,
 		movements: rows
 	};
 };

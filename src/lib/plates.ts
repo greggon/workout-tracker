@@ -30,7 +30,7 @@ export type LoadingConfig = {
 };
 
 /** The empty implement's weight, before any plates. */
-export function baseWeight(tool: Tool, config: LoadingConfig): number {
+function baseWeight(tool: Tool, config: LoadingConfig): number {
 	switch (TOOL_SPEC[tool].base) {
 		case 'bar':
 			return config.barWeight;

@@ -3,8 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { loadingLabel, type LoadingConfig } from '$lib/plates';
 	import { TOOL_SPEC } from '$lib/types';
-	import { formatWeight } from '$lib/volume';
-	import { relativeDay } from '$lib/volume';
+	import { formatWeight, relativeDay } from '$lib/volume';
 	import PlateDiagram from './PlateDiagram.svelte';
 	import { movementsOf, type SessionExercise, type WorkoutSession } from './session.svelte';
 
@@ -78,7 +77,14 @@
 			</div>
 
 			<div class="loads">
-				{#each movements as movement (movement.movementId)}
+				<!--
+					Keyed by position, not by movement id. The array is [main] or [main,
+					pair], so position *is* the identity here — and a superset whose two
+					halves resolve to the same movement (pairing a lift with itself)
+					would produce two identical keys, which Svelte throws on in
+					production as well as in dev.
+				-->
+				{#each movements as movement, slot (slot)}
 					<div class="load">
 						<span class="art">
 							<PlateDiagram tool={movement.tool} weight={movement.weight} {config} />
@@ -110,7 +116,7 @@
 							<span class="set-target num">{exercise.reps} reps</span>
 						</div>
 
-						{#each movements as movement, slot (movement.movementId)}
+						{#each movements as movement, slot (slot)}
 							{@const value = session.reps(index, setIndex, slot)}
 							<div class="entry">
 								<span class="entry-name">{movement.name}</span>

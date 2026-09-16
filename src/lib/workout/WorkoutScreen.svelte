@@ -82,7 +82,9 @@
 		confirmTimer = setTimeout(() => (confirmQuit = false), QUIT_CONFIRM_MS);
 	}
 
-	$effect(() => disarmQuit);
+	/* Returns disarmQuit as the teardown, so a pending confirmation never
+	   outlives the screen that armed it. */
+	$effect(() => () => disarmQuit());
 
 	/**
 	 * Picks up an interrupted workout. A refresh, a phone call, or iOS

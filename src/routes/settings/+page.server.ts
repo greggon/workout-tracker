@@ -3,9 +3,10 @@ import { getDb } from '$lib/server/db';
 import { updateSettings } from '$lib/server/users';
 import { normalizeStock } from '$lib/plates';
 import type { Actions, PageServerLoad } from './$types';
+import type { PageHeader } from '$lib/shell/page-header';
 
 export const load: PageServerLoad = async ({ locals }) => ({
-	header: { kicker: 'Your gym', title: 'Equipment', back: '/routine' },
+	header: { kicker: 'Your gym', title: 'Equipment', back: '/routine' } satisfies PageHeader,
 	settings: {
 		barWeight: locals.user.barWeight,
 		ezBarWeight: locals.user.ezBarWeight,

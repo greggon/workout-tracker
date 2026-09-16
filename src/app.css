@@ -629,6 +629,43 @@ textarea.input {
 	box-shadow: var(--shadow-md);
 }
 
+/* — rows — */
+/*
+ * A tappable row sitting on the page's ground: a day in the rotation, a
+ * movement in history, a day in the routine. The same eight declarations were
+ * copied into three components — hover states and all — which is three places
+ * for them to drift apart. Components that need a different shape override the
+ * one or two properties locally; scoped styles outrank this.
+ */
+.row-card {
+	display: flex;
+	align-items: center;
+	gap: 13px;
+	padding: 14px 16px;
+	border-radius: var(--radius-lg);
+	background: var(--color-surface);
+	box-shadow: var(--shadow-sm);
+	color: inherit;
+	text-decoration: none;
+}
+/* The chevron is drawn by the component; it belongs to the row's hover state. */
+.row-card .chev {
+	flex: none;
+	color: var(--color-neutral-600);
+	transition: color 0.12s ease;
+}
+/* A pointer wants to know a row is clickable before it clicks it; touch finds
+   out by pressing, which the global :active rule covers. */
+@media (hover: hover) and (pointer: fine) {
+	a.row-card:hover {
+		background: color-mix(in srgb, var(--color-accent) 7%, var(--color-surface));
+		box-shadow: var(--shadow-md);
+	}
+	a.row-card:hover .chev {
+		color: var(--color-accent);
+	}
+}
+
 /* — tags — */
 .tag {
 	display: inline-flex;

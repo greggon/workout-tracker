@@ -1,14 +1,16 @@
 import { getDb } from '$lib/server/db';
 import { countSessions, lastSessionPerDay, listDays, recentSessions } from '$lib/server/routine';
-import { plannedSets, plannedVolume, rotateFrom } from '$lib/volume';
+import { plannedFrom, plannedSets, plannedVolume, rotateFrom } from '$lib/volume';
 import type { PageServerLoad } from './$types';
+import type { PageHeader } from '$lib/shell/page-header';
 
 export const load: PageServerLoad = async ({ locals }) => {
+	const db = getDb();
 	const userId = locals.user.id;
 
-	const days = listDays(getDb(), userId);
+	const days = listDays(db, userId);
 	const lastPerDay = lastSessionPerDay(
-		getDb(),
+		db,
 		userId,
 		days.map((d) => d.key)
 	);
@@ -23,16 +25,17 @@ export const load: PageServerLoad = async ({ locals }) => {
 		}
 	}
 
-	const recent = recentSessions(getDb(), userId, 4);
+	const recent = recentSessions(db, userId, 4);
+	const average = (pick: (s: (typeof recent)[number]) => number) =>
+		recent.length ? recent.reduce((total, s) => total + pick(s), 0) / recent.length : 0;
 
 	return {
-		header: { kicker: `Rotation · ${days.length} day split`, title: "Let's lift 💪" },
+		header: {
+			kicker: `Rotation · ${days.length} day split`,
+			title: "Let's lift 💪"
+		} satisfies PageHeader,
 		days: rotateFrom(days, lastKey).map((day) => {
-			const planned = day.exercises.map((ex) => ({
-				sets: ex.sets,
-				reps: ex.reps,
-				movements: [ex.main, ...(ex.pair ? [ex.pair] : [])]
-			}));
+			const planned = plannedFrom(day.exercises);
 			const last = lastPerDay.get(day.key);
 			return {
 				id: day.id,
@@ -47,14 +50,10 @@ export const load: PageServerLoad = async ({ locals }) => {
 				)
 			};
 		}),
-		lastKey,
-		lastAt: lastAt === -Infinity ? null : lastAt,
-		splitSize: days.length,
 		stats: {
-			sessionCount: countSessions(getDb(), userId),
-			avgVolume: recent.length ? recent.reduce((a, r) => a + r.volume, 0) / recent.length : 0,
-			avgMins: recent.length ? recent.reduce((a, r) => a + r.durationMins, 0) / recent.length : 0,
-			sampleSize: recent.length
+			sessionCount: countSessions(db, userId),
+			avgVolume: average((s) => s.volume),
+			avgMins: average((s) => s.durationMins)
 		}
 	};
 };

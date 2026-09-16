@@ -21,7 +21,7 @@ const THEME_COLOR: Record<Resolved, string> = {
 	light: '#eceff8'
 };
 
-export function isThemeChoice(value: unknown): value is ThemeChoice {
+function isThemeChoice(value: unknown): value is ThemeChoice {
 	return value === 'system' || value === 'light' || value === 'dark';
 }
 

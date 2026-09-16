@@ -114,11 +114,6 @@ export const TOOL_LABELS: Record<Tool, string> = Object.fromEntries(
 	TOOLS.map((t) => [t, TOOL_SPEC[t].label])
 ) as Record<Tool, string>;
 
-/** True when the tool takes plates the lifter has to find and hang. */
-export function isPlateLoaded(tool: Tool): boolean {
-	return TOOL_SPEC[tool].sleeves > 0;
-}
-
 /** Day letters in rotation order. The split is 2–5 days, so A–E. */
 export const DAY_KEYS = ['A', 'B', 'C', 'D', 'E'] as const;
 export type DayKey = (typeof DAY_KEYS)[number];

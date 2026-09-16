@@ -48,6 +48,13 @@
 		rows = rows.map((row, idx) => (idx === i ? { ...row, ...patch } : row));
 	}
 
+	/**
+	 * How many of a plate one sleeve may draw on. Goes through the same sleeve
+	 * count `perSideStock` uses rather than a hardcoded 2, so this column and the
+	 * fill below it can never disagree about what a barbell is.
+	 */
+	const perSleeve = (count: number) => Math.floor((Number(count) || 0) / TOOL_SPEC.barbell.sleeves);
+
 	/** A cleared number field is empty, not zero — do not render NaN into it. */
 	const shown = (value: number) => (Number.isFinite(value) ? value : '');
 </script>
@@ -144,7 +151,7 @@
 						aria-label="Colour of the {row.weight} lb plates"
 					/>
 				</span>
-				<span class="per num">{Math.floor((Number(row.count) || 0) / 2) || '—'}</span>
+				<span class="per num">{perSleeve(row.count) || '—'}</span>
 				<button type="button" class="btn btn-ghost drop" onclick={() => removeRow(i)}>Remove</button
 				>
 			</li>

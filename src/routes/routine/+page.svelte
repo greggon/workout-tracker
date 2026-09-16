@@ -81,7 +81,7 @@
 
 <ul class="days">
 	{#each ordered as day, i (day.id)}
-		<li class="day">
+		<li class="day row-card">
 			<div class="arrows">
 				<button
 					class="btn btn-secondary btn-icon arrow"
@@ -153,13 +153,11 @@
 		display: grid;
 		gap: 10px;
 	}
+	/* Shares .row-card's surface; a day row is denser than a tappable one and
+	   holds its own controls, so it tightens the shape. */
 	.day {
-		display: flex;
-		align-items: center;
 		gap: 12px;
-		background: var(--color-surface);
 		border-radius: var(--radius-md);
-		box-shadow: var(--shadow-sm);
 		padding: 12px 14px;
 	}
 

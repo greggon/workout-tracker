@@ -42,6 +42,21 @@ export function plannedVolume(exercises: PlannedExercise[]): number {
 	);
 }
 
+/**
+ * A routine day in the shape the volume maths wants: the pair, when there is
+ * one, is just another loaded movement in the same exercise. Written once
+ * because three callers were each unpacking `main` and `pair` themselves.
+ */
+export function plannedFrom(
+	exercises: { sets: number; reps: number; main: Loaded; pair: Loaded | null }[]
+): PlannedExercise[] {
+	return exercises.map((ex) => ({
+		sets: ex.sets,
+		reps: ex.reps,
+		movements: ex.pair ? [ex.main, ex.pair] : [ex.main]
+	}));
+}
+
 /** Total prescribed sets, counting an exercise once however many movements it pairs. */
 export function plannedSets(exercises: PlannedExercise[]): number {
 	return exercises.reduce((total, ex) => total + ex.sets, 0);

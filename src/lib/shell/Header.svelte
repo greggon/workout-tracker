@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import type { PageHeader } from './page-header';
 	import ThemeToggle from './ThemeToggle.svelte';
 	import { useChrome } from './chrome.svelte';
 
@@ -10,16 +11,13 @@
 	 * during SSR, so a header driven by one renders blank in the server HTML and
 	 * only fills in after hydration — a visible flash on every single load.
 	 *
+	 * The shape is declared on `App.PageData`, so this reads a checked type
+	 * rather than casting whatever `data` happens to carry.
+	 *
 	 * The clocks stay on `chrome`: those genuinely only exist once a workout is
 	 * running in the browser.
 	 */
-	const header = $derived(
-		(page.data.header ?? { kicker: '', title: '', back: null }) as {
-			kicker: string;
-			title: string;
-			back?: string | null;
-		}
-	);
+	const header = $derived<PageHeader>(page.data.header ?? { kicker: '', title: '' });
 
 	const showClocks = $derived(chrome.sessionClock !== null);
 	const progressPct = $derived(

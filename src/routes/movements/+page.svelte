@@ -17,7 +17,7 @@
 	<ul class="list">
 		{#each data.movements as m (m.movementId)}
 			<li>
-				<a class="row" href={resolve('/movements/[id]', { id: m.movementId })}>
+				<a class="row-card" href={resolve('/movements/[id]', { id: m.movementId })}>
 					<span class="text">
 						<span class="name">{m.name}</span>
 						<span class="meta">
@@ -53,17 +53,6 @@
 		flex-direction: column;
 		gap: 10px;
 	}
-	.row {
-		display: flex;
-		align-items: center;
-		gap: 13px;
-		background: var(--color-surface);
-		border-radius: var(--radius-lg);
-		padding: 14px 16px;
-		box-shadow: var(--shadow-sm);
-		color: inherit;
-		text-decoration: none;
-	}
 	.text {
 		flex: 1;
 		min-width: 0;
@@ -83,22 +72,5 @@
 		font-size: 12px;
 		color: var(--color-neutral-500);
 		margin-top: 2px;
-	}
-	.chev {
-		flex: none;
-		color: var(--color-neutral-600);
-		transition: color 0.12s ease;
-	}
-
-	/* A pointer wants to know a row is clickable before it clicks it; touch
-	   finds out by pressing. */
-	@media (hover: hover) and (pointer: fine) {
-		.row:hover {
-			background: color-mix(in srgb, var(--color-accent) 7%, var(--color-surface));
-			box-shadow: var(--shadow-md);
-		}
-		.row:hover .chev {
-			color: var(--color-accent);
-		}
 	}
 </style>
