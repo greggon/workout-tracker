@@ -440,13 +440,8 @@
 	/* Roomier here than in a list: this is the drawing you study while you are
 	   deciding what color a plate is. */
 	.art {
-		flex: 0 0 190px;
-		max-width: 100%;
-	}
-	@media (max-width: 420px) {
-		.art {
-			flex-basis: 100%;
-		}
+		flex: 1 1 260px;
+		max-width: 360px;
 	}
 	.preview-text {
 		font-size: 12.5px;

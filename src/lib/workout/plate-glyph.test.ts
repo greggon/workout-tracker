@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_GLYPH_HEIGHT, PARTIAL_MAX, plateGlyph } from './plate-glyph';
+import {
+	inkOn,
+	MAX_GLYPH_HEIGHT,
+	PARTIAL_MAX,
+	plateGlyph,
+	plateLabel,
+	plateText
+} from './plate-glyph';
 
 /** The denominations that actually hang on a bar, lightest first. */
 const REAL = [2.5, 5, 10, 25, 35, 45];
@@ -92,5 +99,58 @@ describe('denominations off the standard scale', () => {
 			expect(glyph.h).toBeGreaterThan(0);
 			expect(glyph.w).toBeGreaterThan(0);
 		}
+	});
+});
+
+describe('the number written on a plate', () => {
+	const on = (lb: number) => plateText(lb, plateGlyph(lb));
+
+	it('writes a whole number across the plate', () => {
+		expect(on(45).lines).toEqual(['45']);
+		expect(on(25).lines).toEqual(['25']);
+		expect(on(10).lines).toEqual(['10']);
+	});
+
+	it('stacks a number that will not fit across it', () => {
+		// 2.5 is three characters on something 22 units wide; down the plate is
+		// the only way it fits, and is how a real rack reads anyway.
+		expect(on(2.5).lines).toEqual(['2', '.', '5']);
+		expect(on(0.25).lines).toEqual(['0', '.', '2', '5']);
+	});
+
+	it('never writes a number wider than the plate it is on', () => {
+		for (const lb of [0.25, 0.5, 0.75, 1, 2.5, 5, 10, 25, 35, 45]) {
+			const glyph = plateGlyph(lb);
+			const { lines, fontSize, lineHeight } = plateText(lb, glyph);
+			const widest = Math.max(...lines.map((l) => l.length)) * 0.58 * fontSize;
+			expect(widest, `${lb} lb across`).toBeLessThanOrEqual(glyph.w);
+			expect(lines.length * lineHeight, `${lb} lb down`).toBeLessThanOrEqual(glyph.h);
+		}
+	});
+
+	it('scales the number to the plate', () => {
+		expect(on(45).fontSize).toBeGreaterThan(on(1).fontSize);
+	});
+
+	it('writes the weight the way it is spoken', () => {
+		expect(plateLabel(45)).toBe('45');
+		expect(plateLabel(2.5)).toBe('2.5');
+		expect(plateLabel(0.75)).toBe('0.75');
+	});
+});
+
+describe('ink on a plate', () => {
+	it('goes white on dark iron and black on bright', () => {
+		// The default plate is black, and most of a rack is too.
+		expect(inkOn('#000000')).toBe('#ffffff');
+		expect(inkOn('#c0392b')).toBe('#ffffff');
+		expect(inkOn('#0000ff')).toBe('#ffffff');
+		// Greg's yellow 25s and olive 35s.
+		expect(inkOn('#ffff00')).toBe('#12131a');
+		expect(inkOn('#ffffff')).toBe('#12131a');
+	});
+
+	it('falls back to something readable for a color it cannot parse', () => {
+		expect(inkOn('nonsense')).toBe('#ffffff');
 	});
 });

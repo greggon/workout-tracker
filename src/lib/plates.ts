@@ -286,33 +286,104 @@ export function describeStock(inventory: PlateStock[]): string {
 }
 
 /**
- * The one-line setup instruction under each movement — what to actually do at
- * the rack.
+ * A stack of plates, written the way you would count it off a rack: four 45s
+ * are "45 × 4", not "45 + 45 + 45 + 45".
+ *
+ * Reading a run of identical numbers means counting them, which is the one
+ * thing you cannot do at a glance mid-set. The list arrives heaviest first, so
+ * equal plates are always adjacent.
  */
-export function loadingLabel(tool: Tool, weight: number, config: LoadingConfig): string {
+export function describePlates(plates: number[]): string {
+	const groups: { weight: number; count: number }[] = [];
+	for (const plate of plates) {
+		const last = groups[groups.length - 1];
+		if (last && last.weight === plate) last.count++;
+		else groups.push({ weight: plate, count: 1 });
+	}
+	return groups
+		.map((g) => (g.count > 1 ? `${fmt(g.weight)} × ${g.count}` : fmt(g.weight)))
+		.join(' + ');
+}
+
+/**
+ * The setup instruction under a movement, split in two.
+ *
+ * `total` is what the movement weighs, and belongs next to its name. `setup` is
+ * what to hang on the bar, and is the line you read while loading it — so it is
+ * kept clear of everything that is not a plate.
+ *
+ * "on the end" is deliberately absent: a landmine, a machine and a pulley each
+ * load exactly one way, and the diagram beside this already draws a single
+ * sleeve. "per side" stays, because a barbell is the one case where the number
+ * in front of you is not the number you hang.
+ */
+export type LoadingText = {
+	/** What the movement weighs. "225 lb", "Bodyweight + 25 lb". */
+	total: string;
+	/** What to hang on the sleeve: "45 × 2". Empty when there is nothing. */
+	plates: string;
+	/**
+	 * Everything about the load that is not a plate — "per side", "bar only",
+	 * "lighter than the 45 lb bar", "2.5 lb short". Kept separate because a
+	 * screen that draws the plates still has to say these.
+	 */
+	note: string;
+	/** The two of them, for callers with one line to spend. */
+	setup: string;
+};
+
+function parts(total: string, plates: string, note: string): LoadingText {
+	return { total, plates, note, setup: [plates, note].filter(Boolean).join(' ') };
+}
+
+export function loadingParts(tool: Tool, weight: number, config: LoadingConfig): LoadingText {
 	const loading = describeLoading(tool, weight, config);
 
 	if (loading.kind === 'bodyweight') {
-		return loading.added > 0 ? `Bodyweight + ${fmt(loading.added)} lb` : 'Bodyweight';
+		return parts(
+			loading.added > 0 ? `Bodyweight + ${fmt(loading.added)} lb` : 'Bodyweight',
+			'',
+			''
+		);
 	}
 
 	if (loading.kind === 'fixed') {
-		return `${fmt(loading.weight)} lb each hand`;
+		return parts(`${fmt(loading.weight)} lb`, '', 'each hand');
 	}
 
 	const { base, sleeves, plates, remainder, perSleeve } = loading;
-	// One sleeve loads "on the end"; two load "per side".
-	const where = sleeves === 1 ? 'on the end' : 'per side';
+	const total = `${fmt(weight)} lb`;
+	// Only a barbell splits what you hang; everything else loads one sleeve, and
+	// the drawing shows that sleeve.
+	const perSide = sleeves === 2 ? 'per side' : '';
 	const bare = TOOL_SPEC[tool].base === 'none' ? 'unloaded' : 'bar only';
 
-	if (loading.belowBase) return `${fmt(weight)} lb · lighter than the ${fmt(base)} lb bar`;
-	if (loading.bareOnly) return `${fmt(weight)} lb · ${bare}`;
+	if (loading.belowBase) return parts(total, '', `lighter than the ${fmt(base)} lb bar`);
+	if (loading.bareOnly) return parts(total, '', bare);
 	if (plates.length === 0) {
-		return `${fmt(weight)} lb · ${fmt(perSleeve)} lb ${where}, nothing light enough`;
+		return parts(
+			total,
+			'',
+			[`${fmt(perSleeve)} lb`, perSide].filter(Boolean).join(' ') + ', nothing light enough'
+		);
 	}
 
-	const short = remainder > 0 ? ` · ${fmt(remainder)} lb short` : '';
-	return `${fmt(weight)} lb · ${plates.map(fmt).join(' + ')} ${where}${short}`;
+	const short = remainder > 0 ? `${fmt(remainder)} lb short` : '';
+	const note = [perSide, short].filter(Boolean).join(' · ');
+	return parts(total, describePlates(plates), note);
+}
+
+/**
+ * Both halves on one line, for the places that have a line rather than a row —
+ * the routine editor, the equipment preview, and the diagram's screen-reader
+ * label.
+ */
+export function loadingLabel(tool: Tool, weight: number, config: LoadingConfig): string {
+	const { total, setup } = loadingParts(tool, weight, config);
+	if (!setup) return total;
+	// A fixed dumbbell reads as one phrase, not a weight and a note about it.
+	if (describeLoading(tool, weight, config).kind === 'fixed') return `${total} ${setup}`;
+	return `${total} · ${setup}`;
 }
 
 /** True when the plates on hand cannot make the prescribed weight exactly. */

@@ -375,14 +375,11 @@
 		gap: 6px 10px;
 		min-width: 0;
 	}
+	/* Wide enough that the numbers on the plates can be read; the drawing is
+	   worth nothing at a size where they cannot. */
 	.art {
-		flex: 0 0 160px;
-		max-width: 100%;
-	}
-	@media (max-width: 420px) {
-		.art {
-			flex-basis: 100%;
-		}
+		flex: 1 1 240px;
+		max-width: 320px;
 	}
 	.load-text {
 		font-size: 11.5px;

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
 	describeLoading,
+	describePlates,
+	loadingParts,
 	describeStock,
 	fillPlates,
 	isUnloadable,
@@ -149,7 +151,7 @@ describe('the bars', () => {
 	it('loads a barbell on both sleeves off a 45 lb base', () => {
 		const load = describeLoading('barbell', 225, HOME);
 		expect(load).toMatchObject({ kind: 'loaded', sleeves: 2, base: 45, perSleeve: 90 });
-		expect(loadingLabel('barbell', 225, HOME)).toBe('225 lb · 45 + 45 per side');
+		expect(loadingLabel('barbell', 225, HOME)).toBe('225 lb · 45 × 2 per side');
 	});
 
 	it('puts every landmine plate on one end', () => {
@@ -157,7 +159,7 @@ describe('the bars', () => {
 		// what a barbell would want.
 		const load = describeLoading('landmine', 90, HOME);
 		expect(load).toMatchObject({ sleeves: 1, base: 0, perSleeve: 90 });
-		expect(loadingLabel('landmine', 90, HOME)).toBe('90 lb · 45 + 45 on the end');
+		expect(loadingLabel('landmine', 90, HOME)).toBe('90 lb · 45 × 2');
 	});
 
 	it('ignores the bar on a landmine, because the floor is holding it', () => {
@@ -167,7 +169,7 @@ describe('the bars', () => {
 		// hang, and 41 is three plates off this rack.
 		const load = describeLoading('landmine', 41, HOME);
 		expect(load).toMatchObject({ base: 0, perSleeve: 41, remainder: 0 });
-		expect(loadingLabel('landmine', 41, HOME)).toBe('41 lb · 35 + 5 + 1 on the end');
+		expect(loadingLabel('landmine', 41, HOME)).toBe('41 lb · 35 + 5 + 1');
 	});
 
 	it('lets a landmine draw on the whole pile, since only one end loads', () => {
@@ -208,7 +210,7 @@ describe('the plate-loaded machines', () => {
 	it('starts a machine at zero and loads a single bar', () => {
 		const load = describeLoading('machine', 90, HOME);
 		expect(load).toMatchObject({ base: 0, sleeves: 1, perSleeve: 90 });
-		expect(loadingLabel('machine', 90, HOME)).toBe('90 lb · 45 + 45 on the end');
+		expect(loadingLabel('machine', 90, HOME)).toBe('90 lb · 45 × 2');
 	});
 
 	it('says unloaded rather than "bar only" when there is no bar', () => {
@@ -319,5 +321,85 @@ describe('plate colors', () => {
 	it('keeps the first color when a denomination is listed twice', () => {
 		const merged = normalizeStock([plate(5, 2, '#00ff00'), plate(5, 2, '#0000ff')]);
 		expect(merged).toEqual([{ weight: 5, count: 4, color: '#00ff00' }]);
+	});
+});
+
+describe('counting plates off a rack', () => {
+	it('multiplies a run of the same plate instead of repeating it', () => {
+		expect(describePlates([45, 45, 45, 45])).toBe('45 × 4');
+		expect(describePlates([45, 45, 5, 2.5, 0.5])).toBe('45 × 2 + 5 + 2.5 + 0.5');
+	});
+
+	it('leaves a single plate alone', () => {
+		expect(describePlates([45])).toBe('45');
+		expect(describePlates([45, 25, 10])).toBe('45 + 25 + 10');
+	});
+
+	it('has nothing to say about an empty sleeve', () => {
+		expect(describePlates([])).toBe('');
+	});
+
+	it('reads a real loadout the way you would count it', () => {
+		// Greg's examples: a hack squat at 180, and a calf raise at 98.
+		const hack = loadingParts('machine', 180, HOME);
+		expect(hack.total).toBe('180 lb');
+		expect(hack.setup).toBe('45 × 4');
+
+		const calf = loadingParts('machine', 98, HOME);
+		expect(calf.total).toBe('98 lb');
+		expect(calf.setup).toBe('45 × 2 + 5 + 2.5 + 0.5');
+	});
+});
+
+describe('the two halves of a setup line', () => {
+	it('keeps the total apart from what you hang on the bar', () => {
+		const load = loadingParts('barbell', 225, HOME);
+		expect(load.total).toBe('225 lb');
+		// "per side" survives: a barbell is the one tool where the number in
+		// front of you is not the number you hang.
+		expect(load.setup).toBe('45 × 2 per side');
+	});
+
+	it('drops "on the end" from everything that loads one sleeve', () => {
+		for (const tool of ['landmine', 'machine'] as const) {
+			expect(loadingParts(tool, 90, HOME).setup).not.toContain('on the end');
+		}
+	});
+
+	it('says what is wrong instead of what to load, when it cannot be loaded', () => {
+		expect(loadingParts('barbell', 41, HOME).setup).toBe('lighter than the 45 lb bar');
+		expect(loadingParts('barbell', 45, HOME).setup).toBe('bar only');
+		expect(loadingParts('pulley', 0, HOME).setup).toBe('unloaded');
+	});
+
+	it('has no plates to list for the tools that take none', () => {
+		expect(loadingParts('bodyweight', 0, HOME)).toMatchObject({ total: 'Bodyweight', plates: '' });
+		expect(loadingParts('bodyweight', 25, HOME).total).toBe('Bodyweight + 25 lb');
+		expect(loadingParts('dumbbell', 40, HOME)).toMatchObject({
+			total: '40 lb',
+			plates: '',
+			note: 'each hand'
+		});
+	});
+
+	it('keeps the note apart from the plates, so a drawing can replace one', () => {
+		// The workout screen draws the plates and prints only the note; both have
+		// to survive the split, or "per side" and "bar only" quietly disappear.
+		const barbell = loadingParts('barbell', 225, HOME);
+		expect(barbell.plates).toBe('45 × 2');
+		expect(barbell.note).toBe('per side');
+
+		const machine = loadingParts('machine', 180, HOME);
+		expect(machine.plates).toBe('45 × 4');
+		expect(machine.note).toBe('');
+
+		expect(loadingParts('barbell', 45, HOME)).toMatchObject({ plates: '', note: 'bar only' });
+		expect(loadingParts('barbell', 41, HOME).note).toBe('lighter than the 45 lb bar');
+		expect(loadingParts('barbell', 1000, HOME).note).toContain('short');
+	});
+
+	it('still flags a load the rack cannot quite make', () => {
+		const load = loadingParts('barbell', 1000, HOME);
+		expect(load.setup).toContain('short');
 	});
 });

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
-	import { loadingLabel, type LoadingConfig } from '$lib/plates';
+	import { loadingParts, type LoadingConfig } from '$lib/plates';
 	import { TOOL_SPEC } from '$lib/types';
 	import { formatWeight, relativeDay } from '$lib/volume';
 	import PlateDiagram from './PlateDiagram.svelte';
@@ -110,24 +110,33 @@
 					production as well as in dev.
 				-->
 				{#each movements as movement, slot (slot)}
+					{@const load = loadingParts(movement.tool, movement.weight, config)}
 					<div class="load">
+						<div class="load-head">
+							<div class="load-text">
+								<div class="load-name">
+									{movement.name} - <span class="num load-total">{load.total}</span>
+								</div>
+								{#if load.note}
+									<!-- Only what the drawing cannot say. The plate list itself is
+									     redundant beside a diagram with the numbers on it. -->
+									<div class="load-note num">{load.note}</div>
+								{/if}
+							</div>
+							<a
+								class="btn btn-ghost history"
+								href="{resolve('/movements/[id]', {
+									id: movement.movementId
+								})}?back={encodeURIComponent(page.url.pathname)}"
+							>
+								History
+							</a>
+						</div>
+						<!-- The drawing gets the whole row: its plates now carry their own
+						     numbers, and a number is only worth writing if it can be read. -->
 						<span class="art">
 							<PlateDiagram tool={movement.tool} weight={movement.weight} {config} />
 						</span>
-						<div class="load-text">
-							<div class="load-name">{movement.name}</div>
-							<div class="load-setup num">
-								{loadingLabel(movement.tool, movement.weight, config)}
-							</div>
-						</div>
-						<a
-							class="btn btn-ghost history"
-							href="{resolve('/movements/[id]', {
-								id: movement.movementId
-							})}?back={encodeURIComponent(page.url.pathname)}"
-						>
-							History
-						</a>
 					</div>
 				{/each}
 			</div>
@@ -306,34 +315,46 @@
 		gap: 10px;
 	}
 	.load {
-		display: flex;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: 8px 12px;
+		display: grid;
+		gap: 6px;
 		min-width: 0;
 	}
-	/* The diagram is fluid, so it needs a slot to sit in. At phone width it
-	   takes the whole row rather than squeezing the movement name to nothing. */
-	.art {
-		flex: 0 0 160px;
-		max-width: 100%;
+	.load-head {
+		display: flex;
+		align-items: baseline;
+		gap: 12px;
+		min-width: 0;
 	}
-	@media (max-width: 420px) {
-		.art {
-			flex-basis: 100%;
-		}
+	/*
+	 * Small, and against the left edge with everything else in the card. At full
+	 * width it dominated the row — and there are two of these in a superset —
+	 * while all it has to do is show the shape of the stack and the number on
+	 * each plate.
+	 */
+	.art {
+		display: block;
+		width: 100%;
+		max-width: 150px;
 	}
 	.load-text {
 		min-width: 0;
 	}
 	.load-name {
-		font-size: 12.5px;
+		font-size: 13.5px;
 		font-family: var(--font-heading);
 		font-weight: var(--font-heading-weight);
+		color: var(--color-neutral-400);
 	}
-	.load-setup {
-		font-size: 11px;
+	/* The movement's total, alongside its name. Full ink, but no heavier than the
+	   name it sits with — the drawing below is what carries the emphasis. */
+	.load-total {
+		color: var(--color-text);
+	}
+	/* What the drawing cannot say: "per side", "bar only", "2.5 lb short". */
+	.load-note {
+		font-size: 11.5px;
 		color: var(--color-neutral-500);
+		margin-top: 1px;
 	}
 	/* Safe to leave mid-workout: the session is on the device, and coming back
 	   restores it exactly where it was. */
