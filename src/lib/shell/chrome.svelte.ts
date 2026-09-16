@@ -13,8 +13,6 @@ const KEY = Symbol('app-chrome');
  * one person's running clock would bleed into another's page.
  */
 export class Chrome {
-	/** Shown as a round gear on the right of the header. */
-	onGear = $state<(() => void) | null>(null);
 	/** Sets logged out of sets planned, e.g. "7/12 sets". */
 	progressText = $state<string>('');
 	/** Elapsed since the workout started, preformatted. Null hides the clocks. */
@@ -23,8 +21,6 @@ export class Chrome {
 	restClock = $state<string | null>(null);
 	/** Sets completed, 0 to 1. Null hides the bar. */
 	progress = $state<number | null>(null);
-	/** Shown as the gear button when set. */
-	onEdit = $state<(() => void) | null>(null);
 
 	/** Routes call this on unmount so chrome never outlives the screen. */
 	clear() {
@@ -32,8 +28,6 @@ export class Chrome {
 		this.restClock = null;
 		this.progress = null;
 		this.progressText = '';
-		this.onEdit = null;
-		this.onGear = null;
 	}
 }
 

@@ -140,10 +140,8 @@
 		chrome.restClock = clock(session.restMs);
 		chrome.progress = session.progress;
 	});
-	$effect(() => {
-		chrome.onEdit = () => goto(resolve('/routine/[id]', { id: day.id }));
-		return () => chrome.clear();
-	});
+	/* Takes the clocks back down on the way out, however the screen is left. */
+	$effect(() => () => chrome.clear());
 
 	/**
 	 * Keeps the screen awake while logging. The lock is dropped whenever the tab
@@ -290,7 +288,11 @@
 		setTimeout(() => {
 			const el = document.querySelector(`[data-exercise="${index}"]`);
 			if (!el) return;
-			const top = el.getBoundingClientRect().top + window.scrollY - 110;
+			// Measured rather than a constant: the header is pinned while training,
+			// so anything it covers is landed on but not visible, and how much it
+			// covers depends on the safe-area inset and the window width.
+			const header = document.querySelector('header')?.getBoundingClientRect().height ?? 0;
+			const top = el.getBoundingClientRect().top + window.scrollY - header - 14;
 			window.scrollTo({ top, behavior: 'smooth' });
 		}, 80);
 	}
@@ -346,6 +348,29 @@
 	<div class="head">
 		<h2>{day.key} day</h2>
 		<span class="text-muted day-title">{day.title}</span>
+		<!--
+			A link, not a button calling goto(): it opens in a new tab, it works
+			before hydration, and leaving mid-workout is safe either way — the
+			session is written to IndexedDB after every change, so coming back
+			resumes it with the clock still running.
+		-->
+		<a class="btn btn-secondary edit" href={resolve('/routine/[id]', { id: day.id })}>
+			<svg
+				width="15"
+				height="15"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="1.8"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				aria-hidden="true"
+			>
+				<path d="M4 20h4L18.5 9.5a2.8 2.8 0 0 0-4-4L4 16v4Z" />
+				<path d="M13.5 6.5l4 4" />
+			</svg>
+			Edit day
+		</a>
 	</div>
 
 	<ul class="cards">
@@ -398,6 +423,14 @@
 	}
 	.day-title {
 		font-size: 12.5px;
+	}
+	/* Pushed to the end of the row: it is the one thing here you are not
+	   reading, so it should not sit between the day and its title. */
+	.edit {
+		margin-left: auto;
+		align-self: center;
+		font-size: 12.5px;
+		text-decoration: none;
 	}
 
 	.cards,
