@@ -115,7 +115,8 @@
 						<div class="load-head">
 							<div class="load-text">
 								<div class="load-name">
-									{movement.name} - <span class="num load-total">{load.total}</span>
+									<span class="load-movement">{movement.name}</span>
+									<span class="num load-total">- {load.total}</span>
 								</div>
 								{#if load.note}
 									<!-- Only what the drawing cannot say. The plate list itself is
@@ -153,9 +154,18 @@
 						{#each movements as movement, slot (slot)}
 							{@const value = session.reps(index, setIndex, slot)}
 							<div class="entry">
-								<!-- The weight is on the card's summary line and again beside the
-								     plate diagram; a third copy per set row was noise. -->
-								<span class="entry-name">{movement.name}</span>
+								{#if movements.length > 1}
+									<!--
+										Only a superset needs naming here: with one movement the card's
+										own title already says it, and repeating it once per set is how
+										"Low Incline Wide Grip Bench Press" ended up setting the width
+										of the card. The weight is gone from here for the same reason:
+										it is on the summary line and beside the diagram already.
+									-->
+									<span class="entry-name">{movement.name}</span>
+								{:else}
+									<span class="entry-name"></span>
+								{/if}
 								<input
 									class="input num entry-reps"
 									class:logged={value != null && value !== exercise.reps}
@@ -273,6 +283,7 @@
 		font-weight: var(--font-heading-weight);
 		font-size: 16.5px;
 		letter-spacing: -0.01em;
+		overflow-wrap: anywhere;
 	}
 	.struck {
 		text-decoration: line-through;
@@ -339,15 +350,35 @@
 	.load-text {
 		min-width: 0;
 	}
+	/*
+	 * One line, always.
+	 *
+	 * The weight is the half worth protecting: wrapping it put the "lb" on a
+	 * line of its own under the name. So the total never breaks and never
+	 * shrinks, and the name gives way to an ellipsis instead — it is printed in
+	 * full as the card's title two rows up, so nothing is actually lost here.
+	 */
 	.load-name {
+		display: flex;
+		align-items: baseline;
+		gap: 5px;
+		min-width: 0;
 		font-size: 13.5px;
 		font-family: var(--font-heading);
 		font-weight: var(--font-heading-weight);
 		color: var(--color-neutral-400);
 	}
+	.load-movement {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
 	/* The movement's total, alongside its name. Full ink, but no heavier than the
 	   name it sits with — the drawing below is what carries the emphasis. */
 	.load-total {
+		flex: none;
+		white-space: nowrap;
 		color: var(--color-text);
 	}
 	/* What the drawing cannot say: "per side", "bar only", "2.5 lb short". */
@@ -406,6 +437,9 @@
 		display: flex;
 		align-items: center;
 		gap: 8px;
+		/* A grid item takes its content as its automatic minimum; this says the
+		   row may be as narrow as the track it sits in. */
+		min-width: 0;
 		--entry-h: 40px;
 		--entry-w: 72px;
 	}
@@ -414,13 +448,22 @@
 			--entry-h: 48px;
 		}
 	}
+	/*
+	 * Wraps rather than truncating.
+	 *
+	 * It was a single nowrap line with an ellipsis, which is only as good as the
+	 * shrinking working — and on a phone a long name was pushing this row, and
+	 * with it the whole card, past the width of the page. Wrapping text has a
+	 * min-content width of its longest word, and `anywhere` drops even that to a
+	 * single character, so nothing in this row can force it wider than the space
+	 * it is given. A name that needs two lines gets two lines.
+	 */
 	.entry-name {
 		flex: 1;
 		min-width: 0;
 		font-size: 13.5px;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
+		line-height: 1.25;
+		overflow-wrap: anywhere;
 	}
 	.entry-reps {
 		flex: none;
