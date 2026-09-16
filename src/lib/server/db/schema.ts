@@ -120,7 +120,7 @@ export const dayExercises = sqliteTable(
  * `id` is minted client-side with crypto.randomUUID() when the workout starts,
  * and is the idempotency key for the sync queue: a replayed POST upserts.
  *
- * `dayKey` is denormalised on purpose. `dayId` goes null if the routine is
+ * `dayKey` is denormalized on purpose. `dayId` goes null if the routine is
  * later restructured, but the summary chart still needs to find "the last four
  * B-day sessions" years after that day was edited.
  */

@@ -113,7 +113,7 @@
 	}
 
 	/* The one thing you came here to do, given the weight it deserves. Same
-	   gradient as the tab bar's centre button: it is the same action. */
+	   gradient as the tab bar's center button: it is the same action. */
 	.start {
 		display: flex;
 		align-items: center;

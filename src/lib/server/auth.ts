@@ -28,7 +28,7 @@ export class AuthError extends Error {
 	}
 }
 
-/** Normalises "team", "team.cloudflareaccess.com" or a full URL to an origin. */
+/** Normalizes "team", "team.cloudflareaccess.com" or a full URL to an origin. */
 export function accessIssuer(teamDomain: string): string {
 	const host = teamDomain
 		.trim()

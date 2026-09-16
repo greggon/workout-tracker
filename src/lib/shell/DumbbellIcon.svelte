@@ -3,7 +3,7 @@
 	 * The app's own mark, as an inline glyph.
 	 *
 	 * Same geometry as static/icon.svg, minus the rounded-square ground and
-	 * drawn in currentColor so it takes the colour of whatever it sits on. The
+	 * drawn in currentColor so it takes the color of whatever it sits on. The
 	 * viewBox is cropped to the bar itself — the file version is padded to fill
 	 * a launcher tile, which would leave this floating in dead space.
 	 */

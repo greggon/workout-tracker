@@ -95,7 +95,7 @@ fi
 
 # ── 2. snapshot ───────────────────────────────────────────────────────────
 restic snapshots >/dev/null 2>&1 || {
-	log "initialising repository"
+	log "initializing repository"
 	restic init
 }
 

@@ -66,7 +66,7 @@ const payload = (id: string): SessionInput => ({
 	]
 });
 
-/** Records every submission so the tests can assert on retry behaviour. */
+/** Records every submission so the tests can assert on retry behavior. */
 function recorder(outcomes: Parameters<Submit>[0] extends never ? never : string[]) {
 	const seen: string[] = [];
 	let i = 0;

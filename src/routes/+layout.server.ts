@@ -6,7 +6,7 @@ import { rotateFrom } from '$lib/volume';
 import type { LayoutServerLoad } from './$types';
 
 /**
- * Build stamp, plus the day the tab bar's centre button — and the desktop
+ * Build stamp, plus the day the tab bar's center button — and the desktop
  * rail's start button — begins.
  *
  * The rotation lives here rather than on the home page because both navigations

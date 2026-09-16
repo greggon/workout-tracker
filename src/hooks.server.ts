@@ -48,7 +48,7 @@ function accessOptions(): VerifyOptions {
 }
 
 /**
- * A 401 the offline sync queue can recognise without guessing.
+ * A 401 the offline sync queue can recognize without guessing.
  *
  * When the *Access* session lapses, the client never sees this — Cloudflare
  * answers with a 302 to its login page and `fetch` follows it, yielding an HTML

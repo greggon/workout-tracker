@@ -11,7 +11,7 @@
  *   - no stamp + light OS  → light  (the media query)
  *   - data-theme stamped   → that theme, whatever the OS says
  *
- * Every token is declared on bare :root first. A colour whose only definition
+ * Every token is declared on bare :root first. A color whose only definition
  * lives inside a media query or an attribute selector is the classic unreadable
  * -page bug: it simply does not apply in the unstamped state.
  */
@@ -107,7 +107,7 @@
 	--shadow-md: 0 2px 6px rgba(0, 0, 0, 0.34), 0 8px 22px rgba(0, 0, 0, 0.36);
 	--shadow-lg: 0 6px 16px rgba(0, 0, 0, 0.4), 0 20px 48px rgba(0, 0, 0, 0.5);
 
-	/* v2 is phone-shaped: a single narrow column, centred. */
+	/* v2 is phone-shaped: a single narrow column, centered. */
 	--shell-width: 520px;
 	/* The page's side padding. Widens with the window, so a desktop page is not
 	   a phone page with the same 20px margin around it. */
@@ -307,7 +307,7 @@ select,
  * expect to be able to select a weight and copy it.
  *
  * Keyed on the pointer, not the width, so a touchscreen laptop keeps the phone
- * behaviour at any window size.
+ * behavior at any window size.
  */
 @media (hover: hover) and (pointer: fine) {
 	body {
@@ -316,7 +316,7 @@ select,
 	}
 }
 
-/* A thin scrollbar in the app's own colours rather than the browser's default
+/* A thin scrollbar in the app's own colors rather than the browser's default
    slab, which on a dark page is a bright stripe down the edge. */
 html {
 	scrollbar-width: thin;

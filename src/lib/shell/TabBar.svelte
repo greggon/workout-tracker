@@ -5,7 +5,7 @@
 	import { destinations } from './nav';
 
 	/**
-	 * The floating tab bar from v2. Four destinations either side of a centre
+	 * The floating tab bar from v2. Four destinations either side of a center
 	 * action that starts the next workout.
 	 *
 	 * Hidden during a workout: the screen is a single task with its own finish

@@ -17,7 +17,7 @@
 
 	/** Tall enough for the heaviest plate, with a little air above and below. */
 	const H = MAX_GLYPH_HEIGHT + 6;
-	/** Vertical centre of the shaft. */
+	/** Vertical center of the shaft. */
 	const AXIS = H / 2;
 	/** Where the first plate sits, just past the collar. */
 	const FIRST = 50;
@@ -74,7 +74,7 @@
 		<rect class="ink" x="41" y={AXIS - 12} width="6" height="24" rx="2" />
 		{#each stack as plate, i (i)}
 			<!--
-				The colour goes in as a custom property, not a `fill` attribute.
+				The color goes in as a custom property, not a `fill` attribute.
 				An SVG presentation attribute loses to any CSS rule, so the
 				`.plate` rule below would quietly override every per-plate fill.
 			-->
@@ -128,7 +128,7 @@
 	}
 	/* A load the plates cannot actually make is drawn in outline, so the
 	   diagram itself says "this is not what you will end up with". The accent
-	   is used rather than the plate's own colour: a black outline would be the
+	   is used rather than the plate's own color: a black outline would be the
 	   one state you cannot see. */
 	.short .plate {
 		fill: none;

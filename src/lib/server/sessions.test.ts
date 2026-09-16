@@ -96,7 +96,7 @@ describe('saveSession', () => {
 		expect(db.select().from(setLogs).all()).toHaveLength(2);
 	});
 
-	it('denormalises the day letter so history survives routine edits', () => {
+	it('denormalizes the day letter so history survives routine edits', () => {
 		const input = payload();
 		saveSession(db, userId, input);
 		db.delete(days).where(eq(days.id, dayId)).run();
@@ -201,7 +201,7 @@ describe('summarizeSession', () => {
 		expect(summary.volume).toBeGreaterThan(summary.previousVolume!);
 	});
 
-	it('refuses to summarise another account’s session', () => {
+	it('refuses to summarize another account’s session', () => {
 		const input = payload();
 		saveSession(db, userId, input);
 		expect(() => summarizeSession(db, otherUserId, input.id)).toThrow(/No such session/);

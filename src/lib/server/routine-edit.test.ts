@@ -158,7 +158,7 @@ describe('reorderDays', () => {
 		const after = listDays(db, userId);
 
 		expect(after.map((d) => d.id)).toEqual(reversed);
-		// The letter is the day's identity — sessions denormalise it, so moving a
+		// The letter is the day's identity — sessions denormalize it, so moving a
 		// day in the rotation must not hand its letter to a different day.
 		expect(after.map((d) => d.key)).toEqual(['C', 'B', 'A']);
 	});

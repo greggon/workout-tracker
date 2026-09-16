@@ -6,7 +6,7 @@ import type { Db } from './db/client';
 import { dayExercises, days, movements, sessions, setLogs } from './db/schema';
 
 /**
- * Accepting and summarising a finished workout.
+ * Accepting and summarizing a finished workout.
  *
  * Volume is summed in JavaScript from the stored logs rather than in SQL, so
  * the dumbbell-counts-double rule lives in exactly one place. The row counts
@@ -131,7 +131,7 @@ export type SummaryRow = {
 export type HistoryPoint = {
 	startedAt: number;
 	volume: number;
-	/** True for the session being summarised. */
+	/** True for the session being summarized. */
 	current: boolean;
 };
 

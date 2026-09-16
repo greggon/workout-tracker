@@ -3,16 +3,16 @@
  *
  * Not a formula. A linear height made a 1 lb and a 2.5 differ by seven percent
  * and nothing at all in width, which is useless at arm's length — the whole
- * point of the drawing is that you recognise the stack before you read it.
+ * point of the drawing is that you recognize the stack before you read it.
  *
  * So the scale is stepped, anchored on the denominations that actually exist,
  * and interpolated in between for anything unusual.
  */
 
-/** At or below this a plate is a partial: slim, and told apart by colour. */
+/** At or below this a plate is a partial: slim, and told apart by color. */
 export const PARTIAL_MAX = 1;
 
-/** Every partial is the same size, by design. Colour is what separates them. */
+/** Every partial is the same size, by design. Color is what separates them. */
 const PARTIAL: Glyph = { h: 16, w: 3.5 };
 
 export type Glyph = { h: number; w: number };

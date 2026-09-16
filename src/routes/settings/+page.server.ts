@@ -18,7 +18,7 @@ export const actions: Actions = {
 	save: async ({ request, locals }) => {
 		const form = await request.formData();
 		const count = Number(form.get('rows') ?? 0);
-		// normalizeStock validates the colour; anything that is not a hex value
+		// normalizeStock validates the color; anything that is not a hex value
 		// falls back to plain iron rather than reaching an SVG fill.
 		const plateInventory = normalizeStock(
 			Array.from({ length: count }, (_, i) => ({

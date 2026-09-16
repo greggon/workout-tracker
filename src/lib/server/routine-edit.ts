@@ -7,7 +7,7 @@ import { dayExercises, days, movements } from './db/schema';
  * Write paths for the routine.
  *
  * A note on day letters: they are assigned once and never reassigned. Sessions
- * denormalise `day_key` so that "the last four B days" still resolves years
+ * denormalize `day_key` so that "the last four B days" still resolves years
  * after the routine changed — if reordering re-lettered days, every past
  * session would silently start pointing at a different day. Reordering
  * therefore moves `position` only, and the letter is the day's identity.

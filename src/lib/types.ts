@@ -123,11 +123,11 @@ export const MAX_SPLIT = 5;
 
 /**
  * A denomination, how many of that plate you own — the whole pile, not a
- * per-side figure — and what colour it is.
+ * per-side figure — and what color it is.
  *
- * The colour is not decoration. At the rack you recognise a plate by its look
+ * The color is not decoration. At the rack you recognize a plate by its look
  * before you read the number stamped on it, so a diagram drawn in your actual
- * plate colours is quicker to act on than an accurate but uniform one.
+ * plate colors is quicker to act on than an accurate but uniform one.
  */
 export type PlateStock = { weight: number; count: number; color: string };
 
@@ -135,16 +135,16 @@ export type PlateStock = { weight: number; count: number; color: string };
 export const DEFAULT_PLATE_COLOR = '#000000';
 
 /**
- * Normalises a colour to `#rrggbb`, or returns null if it is not one.
+ * Normalizes a color to `#rrggbb`, or returns null if it is not one.
  *
  * Deliberately strict: this value is written straight into an SVG `fill`, and
- * anything that is not a plain hex colour has no business being there.
+ * anything that is not a plain hex color has no business being there.
  */
 export function parseHexColor(value: unknown): string | null {
 	if (typeof value !== 'string') return null;
 	const hex = value.trim().toLowerCase();
 	if (/^#[0-9a-f]{6}$/.test(hex)) return hex;
-	// #abc is the same colour as #aabbcc.
+	// #abc is the same color as #aabbcc.
 	if (/^#[0-9a-f]{3}$/.test(hex)) {
 		return `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`;
 	}

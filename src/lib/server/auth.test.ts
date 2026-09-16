@@ -79,7 +79,7 @@ describe('verifyAccessToken', () => {
 	it('accepts a well-formed assertion and returns the email', async () => {
 		const token = await sign({ email: 'Greg@Example.com' });
 		await expect(verifyAccessToken(token, options())).resolves.toEqual({
-			email: 'greg@example.com' // normalised for the users.email lookup
+			email: 'greg@example.com' // normalized for the users.email lookup
 		});
 	});
 

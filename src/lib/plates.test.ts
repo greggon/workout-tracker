@@ -16,7 +16,7 @@ import { DEFAULT_PLATE_COLOR, TOOL_SPEC, type PlateStock } from './types';
 const many = (...weights: number[]): PlateStock[] =>
 	weights.map((weight) => ({ weight, count: 20, color: DEFAULT_PLATE_COLOR }));
 
-/** A plate row with the default colour, for the count-focused tests. */
+/** A plate row with the default color, for the count-focused tests. */
 const plate = (weight: number, count: number, color = DEFAULT_PLATE_COLOR): PlateStock => ({
 	weight,
 	count,
@@ -274,7 +274,7 @@ describe('a home gym runs out', () => {
 });
 
 describe('describeStock', () => {
-	it('summarises the rack', () => {
+	it('summarizes the rack', () => {
 		expect(describeStock([plate(2.5, 4), plate(45, 6)])).toBe('45×6, 2.5×4');
 	});
 
@@ -283,23 +283,23 @@ describe('describeStock', () => {
 	});
 });
 
-describe('plate colours', () => {
+describe('plate colors', () => {
 	it('defaults to plain iron when none is given', () => {
 		expect(normalizeStock([{ weight: 45, count: 2 }])).toEqual([
 			{ weight: 45, count: 2, color: DEFAULT_PLATE_COLOR }
 		]);
 	});
 
-	it('keeps a colour that was chosen', () => {
+	it('keeps a color that was chosen', () => {
 		expect(normalizeStock([{ weight: 1, count: 4, color: '#c0392b' }])[0].color).toBe('#c0392b');
 	});
 
-	it('accepts shorthand hex and normalises it', () => {
+	it('accepts shorthand hex and normalizes it', () => {
 		expect(normalizeStock([{ weight: 1, count: 4, color: '#F00' }])[0].color).toBe('#ff0000');
 		expect(normalizeStock([{ weight: 1, count: 4, color: '  #C0392B ' }])[0].color).toBe('#c0392b');
 	});
 
-	it('refuses anything that is not a hex colour', () => {
+	it('refuses anything that is not a hex color', () => {
 		// This value is written straight into an SVG fill, so "red" and
 		// "url(#x)" alike fall back to iron rather than reaching the DOM.
 		for (const bad of ['red', 'url(#evil)', 'rgb(1,2,3)', '#12', '', 42, null]) {
@@ -309,14 +309,14 @@ describe('plate colours', () => {
 		}
 	});
 
-	it('exposes a weight-to-colour map for the diagrams', () => {
+	it('exposes a weight-to-color map for the diagrams', () => {
 		const colors = plateColors([plate(45, 2), plate(1, 4, '#c0392b')]);
 		expect(colors.get(45)).toBe(DEFAULT_PLATE_COLOR);
 		expect(colors.get(1)).toBe('#c0392b');
 		expect(colors.get(999)).toBeUndefined();
 	});
 
-	it('keeps the first colour when a denomination is listed twice', () => {
+	it('keeps the first color when a denomination is listed twice', () => {
 		const merged = normalizeStock([plate(5, 2, '#00ff00'), plate(5, 2, '#0000ff')]);
 		expect(merged).toEqual([{ weight: 5, count: 4, color: '#00ff00' }]);
 	});

@@ -6,7 +6,7 @@ const REAL = [2.5, 5, 10, 25, 35, 45];
 const PARTIALS = [0.25, 0.5, 0.75, 1];
 
 describe('partials', () => {
-	it('are all the same size, because colour is what separates them', () => {
+	it('are all the same size, because color is what separates them', () => {
 		const sizes = PARTIALS.map(plateGlyph);
 		for (const size of sizes) expect(size).toEqual(sizes[0]);
 	});

@@ -13,7 +13,7 @@ export type Offline = { store: OfflineStore; queue: SyncQueue };
  * per-person.
  *
  * Falls back to memory when IndexedDB is unavailable — a private window, or
- * storage blocked — so the app degrades to milestone 7 behaviour instead of
+ * storage blocked — so the app degrades to milestone 7 behavior instead of
  * failing to load.
  */
 export function provideOffline(): Offline {

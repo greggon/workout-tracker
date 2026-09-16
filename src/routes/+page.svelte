@@ -194,7 +194,7 @@
 		text-align: left;
 		padding: 14px;
 	}
-	/* A short coloured cap above each figure, so three identical tiles are
+	/* A short colored cap above each figure, so three identical tiles are
 	   still distinguishable at a glance. */
 	.cap {
 		display: block;

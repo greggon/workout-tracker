@@ -68,7 +68,7 @@ export function normalizeStock(raw: unknown): PlateStock[] {
 			const row = item as Partial<PlateStock>;
 			weight = Number(row.weight);
 			count = Math.floor(Number(row.count));
-			// Inventories saved before colours existed simply have none.
+			// Inventories saved before colors existed simply have none.
 			color = parseHexColor(row.color) ?? DEFAULT_PLATE_COLOR;
 		} else {
 			continue;
@@ -78,7 +78,7 @@ export function normalizeStock(raw: unknown): PlateStock[] {
 		if (!Number.isFinite(count) || count <= 0) continue;
 
 		const existing = merged.get(weight);
-		// Merging duplicates keeps the first colour seen rather than the last,
+		// Merging duplicates keeps the first color seen rather than the last,
 		// so the top entry in the settings table is the one that wins.
 		merged.set(weight, {
 			count: (existing?.count ?? 0) + count,
@@ -91,7 +91,7 @@ export function normalizeStock(raw: unknown): PlateStock[] {
 		.sort((a, b) => b.weight - a.weight);
 }
 
-/** Denomination → colour, for drawing a fill that has already been chosen. */
+/** Denomination → color, for drawing a fill that has already been chosen. */
 export function plateColors(inventory: PlateStock[]): Map<number, string> {
 	return new Map(normalizeStock(inventory).map((s) => [s.weight, s.color]));
 }
@@ -139,7 +139,7 @@ function greedyFill(perSide: number, stock: PlateStock[]): PlateFill {
  * takes the 25, finds nothing for the last 5, and gives up, when 10 + 10 + 10
  * makes it exactly.
  *
- * So: a bounded knapsack, minimising plate count over the largest achievable
+ * So: a bounded knapsack, minimizing plate count over the largest achievable
  * weight at or below the target. Dividing through by the gcd keeps the table
  * small — a standard rack reduces to 2.5 lb units, 90 lb a side being 36.
  *
