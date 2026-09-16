@@ -166,6 +166,27 @@ export class WorkoutSession {
 	}
 }
 
+/**
+ * What the screen should do once a set has been written.
+ *
+ * `stay` is the important one: it is what makes a finished exercise editable.
+ * Going back to fix a rep count you fat-fingered logs a set against an exercise
+ * that is already complete, and if that moved you on, the card would jump out
+ * from under you the moment you touched it.
+ */
+export type NextStep = { kind: 'stay' } | { kind: 'open'; index: number } | { kind: 'finish' };
+
+/**
+ * `completed` means this particular write is what finished the exercise — not
+ * merely that the exercise is finished, which is also true of every correction
+ * made afterwards.
+ */
+export function stepAfterLog(session: WorkoutSession, index: number, completed: boolean): NextStep {
+	if (!completed || !session.isExerciseDone(index)) return { kind: 'stay' };
+	const next = session.nextUnfinished(index);
+	return next === null ? { kind: 'finish' } : { kind: 'open', index: next };
+}
+
 /** mm:ss, or h:mm:ss once a session runs past an hour. */
 export function clock(ms: number): string {
 	const total = Math.max(0, Math.floor(ms / 1000));

@@ -17,15 +17,25 @@
 		config: LoadingConfig;
 		lastLogs: Record<string, LastLog>;
 		onOpen: () => void;
-		/** Fired after any set changes, so the page can auto-advance. */
-		onLogged: () => void;
+		/**
+		 * Fired after any set changes. `completed` is true only when this write is
+		 * what finished the exercise, so a later correction to a finished exercise
+		 * does not read as finishing it again.
+		 */
+		onLogged: (completed: boolean) => void;
 	};
 
 	let { session, exercise, index, config, lastLogs, onOpen, onLogged }: Props = $props();
 
 	const movements = $derived(movementsOf(exercise));
 	const done = $derived(session.isExerciseDone(index));
-	const open = $derived(session.active === index && !done);
+	/*
+	 * Open is "this is the exercise you are looking at", nothing more. It used to
+	 * exclude finished exercises, which meant a completed card could not be
+	 * reopened at all: tapping it set `active` and then refused to expand, so a
+	 * mistyped rep count was permanent for the rest of the workout.
+	 */
+	const open = $derived(session.active === index);
 	const loggedIn = $derived(session.loggedIn(index));
 	const slotCount = $derived(exercise.sets * movements.length);
 
@@ -45,8 +55,9 @@
 	const setIndexes = $derived([...Array(exercise.sets).keys()]);
 
 	function record(setIndex: number, slot: number, reps: number | null) {
+		const wasDone = session.isExerciseDone(index);
 		session.logSet(index, setIndex, slot, reps);
-		onLogged();
+		onLogged(!wasDone && session.isExerciseDone(index));
 	}
 
 	function onReps(setIndex: number, slot: number, value: string) {
@@ -61,7 +72,7 @@
 			{done ? '✓' : index + 1}
 		</span>
 		<span class="head-text">
-			<span class="name" class:struck={done}>{title}</span>
+			<span class="name" class:struck={done && !open}>{title}</span>
 			<span class="summary num">{summary}</span>
 		</span>
 		<span class="count num">{loggedIn}/{slotCount}</span>
@@ -177,6 +188,12 @@
 	}
 	.card-wrap.done {
 		opacity: 0.55;
+	}
+	/* Faded while it sits there finished, full strength while you are correcting
+	   it — dimmed inputs are exactly what you do not want to read when fixing a
+	   number you got wrong. */
+	.card-wrap.done.open {
+		opacity: 1;
 	}
 
 	.head {

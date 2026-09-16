@@ -5,6 +5,7 @@
 	import {
 		clock,
 		movementsOf,
+		stepAfterLog,
 		WorkoutSession,
 		type SessionExercise
 	} from '$lib/workout/session.svelte';
@@ -82,9 +83,11 @@
 		confirmTimer = setTimeout(() => (confirmQuit = false), QUIT_CONFIRM_MS);
 	}
 
-	/* Returns disarmQuit as the teardown, so a pending confirmation never
-	   outlives the screen that armed it. */
-	$effect(() => () => disarmQuit());
+	/* Teardown for both pending timers, so neither outlives the screen. */
+	$effect(() => () => {
+		disarmQuit();
+		cancelAdvance();
+	});
 
 	/**
 	 * Picks up an interrupted workout. A refresh, a phone call, or iOS
@@ -271,19 +274,43 @@
 		void commit();
 	}
 
-	/** Advance past a finished exercise, and end the day when none are left. */
-	function afterLog(index: number) {
+	/**
+	 * Advance past a finished exercise, and end the day when none are left.
+	 *
+	 * The move waits half a second and is cancelled by anything else you type.
+	 * Reps are entered a digit at a time, so the exercise is briefly "complete"
+	 * at 1 on the way to 12 — without the wait, the card would leave while you
+	 * were still typing into it. Correcting a finished exercise never moves you
+	 * at all; see stepAfterLog.
+	 */
+	const ADVANCE_AFTER_MS = 500;
+	let advanceTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function cancelAdvance() {
+		if (advanceTimer !== null) clearTimeout(advanceTimer);
+		advanceTimer = null;
+	}
+
+	function afterLog(index: number, completed: boolean) {
 		// Still training, so the pending discard was not meant.
 		disarmQuit();
-		if (!session.isExerciseDone(index)) return;
+		cancelAdvance();
 
-		const next = session.nextUnfinished(index);
-		if (next === null) {
-			setTimeout(finish, 450);
-			return;
-		}
-		session.active = next;
-		scrollToExercise(next);
+		const step = stepAfterLog(session, index, completed);
+		if (step.kind === 'stay') return;
+
+		advanceTimer = setTimeout(() => {
+			advanceTimer = null;
+			// Re-checked on the way out: half a second of typing may have undone it,
+			// and you may have tapped a different card in the meantime.
+			if (!session.isExerciseDone(index) || session.active !== index) return;
+			if (step.kind === 'finish') {
+				finish();
+				return;
+			}
+			session.active = step.index;
+			scrollToExercise(step.index);
+		}, ADVANCE_AFTER_MS);
 	}
 
 	function scrollToExercise(index: number) {
@@ -384,7 +411,7 @@
 				{config}
 				{lastLogs}
 				onOpen={() => (session.active = index)}
-				onLogged={() => afterLog(index)}
+				onLogged={(completed) => afterLog(index, completed)}
 			/>
 		{/each}
 	</ul>

@@ -3,6 +3,7 @@ import {
 	clock,
 	movementsOf,
 	slotKey,
+	stepAfterLog,
 	WorkoutSession,
 	type SessionExercise
 } from './session.svelte';
@@ -155,5 +156,79 @@ describe('clocks', () => {
 		const session = fresh();
 		session.finish();
 		expect(session.durationMins).toBeGreaterThanOrEqual(1);
+	});
+});
+
+describe('what happens after a set is logged', () => {
+	/** Logs one slot the way the card does, reporting whether it finished the exercise. */
+	function log(
+		session: WorkoutSession,
+		index: number,
+		set: number,
+		slot: number,
+		reps: number | null
+	) {
+		const wasDone = session.isExerciseDone(index);
+		session.logSet(index, set, slot, reps);
+		return !wasDone && session.isExerciseDone(index);
+	}
+
+	it('stays put while an exercise is still unfinished', () => {
+		const session = fresh();
+		const completed = log(session, 0, 0, 0, 10);
+		expect(stepAfterLog(session, 0, completed)).toEqual({ kind: 'stay' });
+	});
+
+	it('opens the next exercise when one is finished', () => {
+		const session = fresh();
+		completeExercise(session, 0);
+		expect(stepAfterLog(session, 0, true)).toEqual({ kind: 'open', index: 1 });
+	});
+
+	it('finishes the day when nothing is left', () => {
+		const session = fresh();
+		completeExercise(session, 0);
+		completeExercise(session, 1);
+		expect(stepAfterLog(session, 1, true)).toEqual({ kind: 'finish' });
+	});
+
+	it('stays put when a finished exercise is corrected', () => {
+		const session = fresh();
+		completeExercise(session, 0);
+
+		// Going back to fix a rep count. The exercise was already done, so this
+		// write did not complete it — and moving on would pull the card out from
+		// under the correction being typed into it.
+		const completed = log(session, 0, 0, 0, 8);
+		expect(completed).toBe(false);
+		expect(session.reps(0, 0, 0)).toBe(8);
+		expect(stepAfterLog(session, 0, completed)).toEqual({ kind: 'stay' });
+	});
+
+	it('stays put when a correction empties a slot, and moves on once it is filled again', () => {
+		const session = fresh();
+		completeExercise(session, 0);
+
+		// Clearing the field to retype it reopens the exercise…
+		const cleared = log(session, 0, 1, 1, null);
+		expect(cleared).toBe(false);
+		expect(session.isExerciseDone(0)).toBe(false);
+		expect(stepAfterLog(session, 0, cleared)).toEqual({ kind: 'stay' });
+
+		// …and putting a number back finishes it again, which does move on.
+		const refilled = log(session, 0, 1, 1, 9);
+		expect(refilled).toBe(true);
+		expect(stepAfterLog(session, 0, refilled)).toEqual({ kind: 'open', index: 1 });
+	});
+
+	it('never finishes the day twice over a correction', () => {
+		const session = fresh();
+		completeExercise(session, 0);
+		completeExercise(session, 1);
+
+		// Every exercise is done, so nextUnfinished has nothing to offer. A
+		// correction must not be read as the last set landing all over again.
+		const completed = log(session, 1, 0, 0, 11);
+		expect(stepAfterLog(session, 1, completed)).toEqual({ kind: 'stay' });
 	});
 });
