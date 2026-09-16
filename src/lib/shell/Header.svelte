@@ -168,7 +168,7 @@
 		position: sticky;
 		top: 0;
 		z-index: 30;
-		padding: calc(10px + env(safe-area-inset-top)) 0 11px;
+		padding: calc(18px + env(safe-area-inset-top)) 0 18px;
 	}
 
 	.clocks {
@@ -177,26 +177,33 @@
 		display: flex;
 		gap: 8px;
 	}
+	/*
+	 * Sized to be read at arm's length, mid-set, without leaning in — these two
+	 * numbers are the only reason the header is pinned at all, so the block is
+	 * deliberately about half as tall again as it needs to be to hold them.
+	 */
 	.clock {
 		flex: 1;
 		min-width: 0;
 		background: var(--on-section-fill);
-		border-radius: var(--radius-md);
-		padding: 4px 11px 6px;
+		border-radius: var(--radius-lg);
+		padding: 9px 14px 11px;
 	}
 	.rest {
 		background: var(--on-section-fill-accent);
 	}
 	.clock-label {
 		color: var(--on-section-dim);
+		font-size: 11px;
 	}
 	.rest-label {
 		color: var(--on-section-accent);
 	}
 	.clock-value {
 		font-family: var(--font-heading);
-		font-size: 21px;
-		line-height: 1.15;
+		font-size: 34px;
+		line-height: 1.1;
+		letter-spacing: -0.02em;
 		color: var(--on-section);
 	}
 	/* Must not come from the page palette: accent-100 inverts to near-black in
@@ -204,16 +211,24 @@
 	.rest-value {
 		color: var(--on-section);
 	}
+	/* A session past an hour reads h:mm:ss — seven characters, which is two more
+	   than the clock is usually asked to hold. On the narrowest phones that is
+	   wider than half the row, so the numerals give a little back. */
+	@media (max-width: 380px) {
+		.clock-value {
+			font-size: 29px;
+		}
+	}
 
 	.progress {
-		margin-top: 10px;
+		margin-top: 13px;
 		display: flex;
 		align-items: center;
 		gap: 10px;
 	}
 	.track {
 		flex: 1;
-		height: 7px;
+		height: 9px;
 		border-radius: var(--radius-pill);
 		background: var(--on-section-track);
 		overflow: hidden;
@@ -226,7 +241,7 @@
 	}
 	.progress-text {
 		flex: none;
-		font-size: 11.5px;
+		font-size: 13px;
 		color: var(--on-section-accent);
 	}
 
@@ -247,10 +262,9 @@
 		.title {
 			font-size: 23px;
 		}
-		/* The training bar is already compact, but a window has the width for
-		   bigger numerals in it. */
+		/* A window has the width for bigger numerals still. */
 		.clock-value {
-			font-size: 24px;
+			font-size: 38px;
 		}
 	}
 </style>

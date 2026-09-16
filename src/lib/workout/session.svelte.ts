@@ -39,7 +39,8 @@ export class WorkoutSession {
 
 	/** Ticks once a second so the clocks move. */
 	now = $state(Date.now());
-	/** When the last set was logged — the rest clock counts from here. */
+	/** When the last set was logged — the rest clock counts from here, once
+	 *  there is something to count from. */
 	lastAt = $state(Date.now());
 	/** Which exercise is expanded. */
 	active = $state(0);
@@ -68,7 +69,17 @@ export class WorkoutSession {
 		return Math.max(0, this.now - this.startedAt);
 	}
 
+	/**
+	 * Zero until the first set is logged.
+	 *
+	 * Rest is time since the last set, so before there has been a set there is no
+	 * rest to measure. It used to count from the moment the screen opened, which
+	 * meant walking to the rack, loading a bar and doing your first working set
+	 * all read as "resting" — the number was at four minutes before any lifting
+	 * had happened, which is worse than useless next to a real rest clock.
+	 */
 	get restMs(): number {
+		if (this.loggedCount === 0) return 0;
 		return Math.max(0, this.now - this.lastAt);
 	}
 

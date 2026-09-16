@@ -232,3 +232,61 @@ describe('what happens after a set is logged', () => {
 		expect(stepAfterLog(session, 1, completed)).toEqual({ kind: 'stay' });
 	});
 });
+
+describe('the rest clock', () => {
+	it('stays at zero until the first set is logged', () => {
+		const session = fresh();
+		// Four minutes of walking to the rack and loading a bar is not rest.
+		session.now = session.startedAt + 4 * 60_000;
+		expect(session.restMs).toBe(0);
+		expect(clock(session.restMs)).toBe('0:00');
+
+		// The session clock is running the whole time, which is the point of
+		// having two of them.
+		expect(session.elapsedMs).toBe(4 * 60_000);
+	});
+
+	it('starts counting from the first logged set', () => {
+		const session = fresh();
+		session.logSet(0, 0, 0, 10);
+		const logged = session.lastAt;
+		session.now = logged + 90_000;
+		expect(session.restMs).toBe(90_000);
+	});
+
+	it('resets with every set after that', () => {
+		const session = fresh();
+		session.logSet(0, 0, 0, 10);
+		session.now = session.lastAt + 90_000;
+		expect(session.restMs).toBe(90_000);
+
+		// logSet stamps lastAt from the real clock; the once-a-second tick is what
+		// moves `now` up to meet it, so the test does that tick itself.
+		session.logSet(0, 0, 1, 10);
+		session.now = session.lastAt;
+		expect(session.restMs).toBe(0);
+	});
+
+	it('is back to zero if every set is cleared again', () => {
+		const session = fresh();
+		session.logSet(0, 0, 0, 10);
+		session.logSet(0, 0, 0, null);
+		session.now = session.lastAt + 60_000;
+		expect(session.restMs).toBe(0);
+	});
+
+	it('keeps counting across a resumed session', () => {
+		const session = fresh();
+		session.adopt({
+			sessionId: 'abc',
+			startedAt: 1_700_000_000_000,
+			lastAt: 1_700_000_300_000,
+			active: 1,
+			log: { '0|0|0': 8 }
+		});
+		session.now = 1_700_000_400_000;
+		// A workout picked up after a reload has already had a set logged, so the
+		// rest clock has something to count from.
+		expect(session.restMs).toBe(100_000);
+	});
+});
