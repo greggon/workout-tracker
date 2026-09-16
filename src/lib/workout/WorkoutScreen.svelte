@@ -3,10 +3,14 @@
 	import { resolve } from '$app/paths';
 	import ExerciseCard from '$lib/workout/ExerciseCard.svelte';
 	import {
+		ADVANCE_DELAY_MS,
+		ADVANCE_ON_COMMIT_MS,
 		clock,
 		movementsOf,
 		stepAfterLog,
 		WorkoutSession,
+		type Advance,
+		type Logged,
 		type SessionExercise
 	} from '$lib/workout/session.svelte';
 	import type { LoadingConfig } from '$lib/plates';
@@ -277,40 +281,61 @@
 	/**
 	 * Advance past a finished exercise, and end the day when none are left.
 	 *
-	 * The move waits half a second and is cancelled by anything else you type.
-	 * Reps are entered a digit at a time, so the exercise is briefly "complete"
-	 * at 1 on the way to 12 — without the wait, the card would leave while you
-	 * were still typing into it. Correcting a finished exercise never moves you
-	 * at all; see stepAfterLog.
+	 * The move waits — how long depends on whether it was tapped or typed, see
+	 * ADVANCE_DELAY_MS — and anything else you enter cancels it. Correcting a
+	 * finished exercise never moves you at all; see stepAfterLog.
 	 */
-	const ADVANCE_AFTER_MS = 500;
 	let advanceTimer: ReturnType<typeof setTimeout> | null = null;
+	/** The move waiting to happen, kept so committing can bring it forward. */
+	let pending: { index: number; step: Advance } | null = null;
 
 	function cancelAdvance() {
 		if (advanceTimer !== null) clearTimeout(advanceTimer);
 		advanceTimer = null;
+		pending = null;
 	}
 
-	function afterLog(index: number, completed: boolean) {
+	function schedule(index: number, step: Advance, delay: number) {
+		if (advanceTimer !== null) clearTimeout(advanceTimer);
+		pending = { index, step };
+		advanceTimer = setTimeout(applyPending, delay);
+	}
+
+	function applyPending() {
+		const move = pending;
+		cancelAdvance();
+		if (!move) return;
+
+		// Re-checked on the way out: the wait may have been spent undoing it, and
+		// you may have tapped a different card in the meantime.
+		if (!session.isExerciseDone(move.index) || session.active !== move.index) return;
+		if (move.step.kind === 'finish') {
+			finish();
+			return;
+		}
+		session.active = move.step.index;
+		scrollToExercise(move.step.index);
+	}
+
+	function afterLog(index: number, { completed, source }: Logged) {
 		// Still training, so the pending discard was not meant.
 		disarmQuit();
 		cancelAdvance();
 
 		const step = stepAfterLog(session, index, completed);
 		if (step.kind === 'stay') return;
+		schedule(index, step, ADVANCE_DELAY_MS[source]);
+	}
 
-		advanceTimer = setTimeout(() => {
-			advanceTimer = null;
-			// Re-checked on the way out: half a second of typing may have undone it,
-			// and you may have tapped a different card in the meantime.
-			if (!session.isExerciseDone(index) || session.active !== index) return;
-			if (step.kind === 'finish') {
-				finish();
-				return;
-			}
-			session.active = step.index;
-			scrollToExercise(step.index);
-		}, ADVANCE_AFTER_MS);
+	/**
+	 * The lifter has finished entering a number — keypad dismissed, or focus
+	 * gone. Brings a waiting move forward instead of sitting out the backstop,
+	 * which is the difference between "it moves on when I am done" and "it does
+	 * not move on at all".
+	 */
+	function afterCommit() {
+		if (pending === null) return;
+		schedule(pending.index, pending.step, ADVANCE_ON_COMMIT_MS);
 	}
 
 	function scrollToExercise(index: number) {
@@ -411,7 +436,8 @@
 				{config}
 				{lastLogs}
 				onOpen={() => (session.active = index)}
-				onLogged={(completed) => afterLog(index, completed)}
+				onLogged={(event) => afterLog(index, event)}
+				onCommit={afterCommit}
 			/>
 		{/each}
 	</ul>

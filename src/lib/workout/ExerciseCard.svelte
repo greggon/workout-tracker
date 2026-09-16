@@ -5,7 +5,13 @@
 	import { TOOL_SPEC } from '$lib/types';
 	import { formatWeight, relativeDay } from '$lib/volume';
 	import PlateDiagram from './PlateDiagram.svelte';
-	import { movementsOf, type SessionExercise, type WorkoutSession } from './session.svelte';
+	import {
+		movementsOf,
+		type LogSource,
+		type Logged,
+		type SessionExercise,
+		type WorkoutSession
+	} from './session.svelte';
 
 	/** `loggedAt` survives the load boundary as a Date, not an epoch number. */
 	type LastLog = { weight: number; reps: number; loggedAt: Date };
@@ -20,12 +26,20 @@
 		/**
 		 * Fired after any set changes. `completed` is true only when this write is
 		 * what finished the exercise, so a later correction to a finished exercise
-		 * does not read as finishing it again.
+		 * does not read as finishing it again; `source` says whether that came
+		 * from a tap or from a number still being typed.
 		 */
-		onLogged: (completed: boolean) => void;
+		onLogged: (event: Logged) => void;
+		/**
+		 * Fired when the lifter is done entering a number — the keypad's Done key,
+		 * or focus leaving the field. On a phone that is the real "I have finished
+		 * this set" signal; the timer behind onLogged is only a backstop for when
+		 * focus never leaves.
+		 */
+		onCommit: () => void;
 	};
 
-	let { session, exercise, index, config, lastLogs, onOpen, onLogged }: Props = $props();
+	let { session, exercise, index, config, lastLogs, onOpen, onLogged, onCommit }: Props = $props();
 
 	const movements = $derived(movementsOf(exercise));
 	const done = $derived(session.isExerciseDone(index));
@@ -54,15 +68,15 @@
 
 	const setIndexes = $derived([...Array(exercise.sets).keys()]);
 
-	function record(setIndex: number, slot: number, reps: number | null) {
+	function record(setIndex: number, slot: number, reps: number | null, source: LogSource) {
 		const wasDone = session.isExerciseDone(index);
 		session.logSet(index, setIndex, slot, reps);
-		onLogged(!wasDone && session.isExerciseDone(index));
+		onLogged({ completed: !wasDone && session.isExerciseDone(index), source });
 	}
 
 	function onReps(setIndex: number, slot: number, value: string) {
 		const trimmed = value.trim();
-		record(setIndex, slot, trimmed === '' ? null : Number(trimmed));
+		record(setIndex, slot, trimmed === '' ? null : Number(trimmed), 'typed');
 	}
 </script>
 
@@ -130,23 +144,32 @@
 						{#each movements as movement, slot (slot)}
 							{@const value = session.reps(index, setIndex, slot)}
 							<div class="entry">
+								<!-- The weight is on the card's summary line and again beside the
+								     plate diagram; a third copy per set row was noise. -->
 								<span class="entry-name">{movement.name}</span>
-								<span class="entry-weight num">{formatWeight(movement.weight)} lb</span>
 								<input
 									class="input num entry-reps"
+									class:logged={value != null && value !== exercise.reps}
 									type="number"
 									inputmode="numeric"
 									min="0"
 									placeholder={String(exercise.reps)}
 									value={value ?? ''}
 									oninput={(e) => onReps(setIndex, slot, e.currentTarget.value)}
+									onblur={onCommit}
+									onkeydown={(e) => {
+										// Enter, and the numeric keypad's Done, mean the number is
+										// finished. Blurring closes the keypad and commits through
+										// the same path as tapping away.
+										if (e.key === 'Enter') e.currentTarget.blur();
+									}}
 									aria-label="Reps completed, {movement.name}, set {setIndex + 1}"
 								/>
 								<button
 									type="button"
 									class="btn check"
 									class:checked={value === exercise.reps}
-									onclick={() => record(setIndex, slot, exercise.reps)}
+									onclick={() => record(setIndex, slot, exercise.reps, 'check')}
 									title="Hit all {exercise.reps} reps"
 									aria-label="Hit all {exercise.reps} reps, {movement.name}, set {setIndex + 1}"
 								>
@@ -353,10 +376,22 @@
 		color: var(--color-neutral-600);
 	}
 
+	/*
+	 * The two controls are the same size on purpose: they are alternatives, and
+	 * both are aimed at with a thumb between sets. One height for both, sized up
+	 * on touch — 38px was under the 44px everything else in a workout gets.
+	 */
 	.entry {
 		display: flex;
 		align-items: center;
 		gap: 8px;
+		--entry-h: 40px;
+		--entry-w: 72px;
+	}
+	@media (pointer: coarse) {
+		.entry {
+			--entry-h: 48px;
+		}
 	}
 	.entry-name {
 		flex: 1;
@@ -366,23 +401,31 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	.entry-weight {
-		flex: none;
-		font-size: 12px;
-		color: var(--color-neutral-500);
-	}
 	.entry-reps {
 		flex: none;
-		width: 64px;
+		width: var(--entry-w);
+		height: var(--entry-h);
 		text-align: center;
+	}
+	/*
+	 * A logged set always shows in exactly one place: here when the number is off
+	 * target, and on the check when it is not. Lighting both — which is what
+	 * tapping the check did, since it fills the field with the target — said the
+	 * same thing twice and read as two separate states.
+	 */
+	.entry-reps.logged {
+		border-color: var(--color-accent);
+		background: color-mix(in srgb, var(--color-accent) 10%, transparent);
 	}
 
 	.check {
 		flex: none;
-		width: 38px;
+		width: var(--entry-w);
+		height: var(--entry-h);
 		border-color: var(--color-divider);
 		color: var(--color-neutral-500);
 	}
+	/* Filled at the prescribed reps, however they got there — typed or tapped. */
 	.check.checked {
 		color: var(--color-accent);
 		border-color: var(--color-accent);

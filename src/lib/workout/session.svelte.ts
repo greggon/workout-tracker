@@ -187,6 +187,44 @@ export class WorkoutSession {
  */
 export type NextStep = { kind: 'stay' } | { kind: 'open'; index: number } | { kind: 'finish' };
 
+/** A step that actually moves the screen — everything except staying put. */
+export type Advance = Exclude<NextStep, { kind: 'stay' }>;
+
+/** How a set reached the log: the check button, or typed into the field. */
+export type LogSource = 'check' | 'typed';
+
+export type Logged = { completed: boolean; source: LogSource };
+
+/**
+ * How long to wait before acting on a completed exercise.
+ *
+ * A tap on the check is one decisive gesture, so it only needs long enough to
+ * see the tick land. Typing is not: reps go in a digit at a time, and an
+ * exercise is briefly complete at "1" on the way to "11". The wait has to
+ * outlast the gap between two digits of someone wearing gloves with a phone
+ * balanced on a bench — half a second does not, which is how a workout finished
+ * itself mid-number.
+ *
+ * Any further input cancels a pending move, so this only ever delays the case
+ * where the lifter has genuinely stopped typing.
+ */
+export const ADVANCE_DELAY_MS: Record<LogSource, number> = {
+	check: 350,
+	typed: 2500
+};
+
+/**
+ * The wait once the lifter says they are finished typing — the keypad's Done
+ * key, or a tap anywhere else on the screen.
+ *
+ * That is the signal that actually matters on a phone: the number pad covers
+ * half the screen, so dismissing it is a deliberate act, and waiting out the
+ * typed backstop after that reads as the screen having simply stopped working.
+ * Short, but not zero — a tap that lands on another control cancels the move
+ * instead of racing it.
+ */
+export const ADVANCE_ON_COMMIT_MS = 200;
+
 /**
  * `completed` means this particular write is what finished the exercise — not
  * merely that the exercise is finished, which is also true of every correction

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+	ADVANCE_DELAY_MS,
+	ADVANCE_ON_COMMIT_MS,
 	clock,
 	movementsOf,
 	slotKey,
@@ -288,5 +290,33 @@ describe('the rest clock', () => {
 		// A workout picked up after a reload has already had a set logged, so the
 		// rest clock has something to count from.
 		expect(session.restMs).toBe(100_000);
+	});
+});
+
+describe('how long the screen waits before moving on', () => {
+	it('gives a typed number long enough to finish typing it', () => {
+		// The bug this guards: entering 11 on the last set of the last exercise
+		// completed the day at "1" and committed the workout while the second
+		// digit was still coming. Anything under a couple of seconds is shorter
+		// than a real gap between two digits, gloves on, phone on a bench.
+		expect(ADVANCE_DELAY_MS.typed).toBeGreaterThanOrEqual(2000);
+	});
+
+	it('acts almost at once when the lifter says they are done', () => {
+		// Dismissing the number pad, or tapping away from the field, is the signal
+		// that matters on a phone. Waiting out the typed backstop after that reads
+		// as the screen having stopped working — which is what it did.
+		expect(ADVANCE_ON_COMMIT_MS).toBeLessThan(ADVANCE_DELAY_MS.typed);
+		expect(ADVANCE_ON_COMMIT_MS).toBeLessThanOrEqual(300);
+		// Not zero: a tap heading for another control has to be able to cancel it
+		// rather than race it.
+		expect(ADVANCE_ON_COMMIT_MS).toBeGreaterThan(0);
+	});
+
+	it('does not make a deliberate tap wait around', () => {
+		// A tap on the check is unambiguous — it only needs long enough to see
+		// the tick land.
+		expect(ADVANCE_DELAY_MS.check).toBeLessThan(600);
+		expect(ADVANCE_DELAY_MS.check).toBeLessThan(ADVANCE_DELAY_MS.typed);
 	});
 });
