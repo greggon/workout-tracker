@@ -91,6 +91,34 @@ export function normalizeStock(raw: unknown): PlateStock[] {
 		.sort((a, b) => b.weight - a.weight);
 }
 
+/** Everything the equipment form stores: the two bars and the rack. */
+export type Equipment = {
+	barWeight: number;
+	ezBarWeight: number;
+	inventory: PlateStock[];
+};
+
+/**
+ * Whether the equipment on screen still matches what was saved.
+ *
+ * Both sides are normalized first, so "45" and "45.0" are the same rack and a
+ * half-typed row that would not survive a save does not count as a change. What
+ * is left is the difference a save would actually write.
+ */
+export function equipmentChanged(saved: Equipment, current: Equipment): boolean {
+	if (Number(saved.barWeight) !== Number(current.barWeight)) return true;
+	if (Number(saved.ezBarWeight) !== Number(current.ezBarWeight)) return true;
+
+	const before = normalizeStock(saved.inventory);
+	const after = normalizeStock(current.inventory);
+	if (before.length !== after.length) return true;
+
+	return before.some((plate, i) => {
+		const now = after[i];
+		return plate.weight !== now.weight || plate.count !== now.count || plate.color !== now.color;
+	});
+}
+
 /** Denomination → color, for drawing a fill that has already been chosen. */
 export function plateColors(inventory: PlateStock[]): Map<number, string> {
 	return new Map(normalizeStock(inventory).map((s) => [s.weight, s.color]));

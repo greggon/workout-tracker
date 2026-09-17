@@ -33,18 +33,14 @@
 	/** Where the first plate sits, just past the collar. */
 	const FIRST = 34;
 	const GAP = 3;
-	/** Room beyond the last plate for the sleeve and the bar's own weight. */
-	const SLEEVE = 56;
+	/** The bare sleeve past the last plate, so the bar reads as a bar. */
+	const SLEEVE = 32;
 	/** Keeps a light load from rendering as a tiny drawing. */
-	const MIN_W = 250;
+	const MIN_W = 220;
 
 	const loading = $derived(describeLoading(tool, weight, config));
 	const label = $derived(loadingLabel(tool, weight, config));
 	const colors = $derived(plateColors(config.inventory));
-	/* describeLoading already worked this out; asking plates.ts a second time
-	   would be a second place for "what does this implement weigh" to live. */
-	const barWeight = $derived(loading.kind === 'loaded' ? loading.base : 0);
-
 	const short = $derived(loading.kind === 'loaded' && loading.remainder > 0);
 
 	const stack = $derived.by(() => {
@@ -75,11 +71,6 @@
 			? MIN_W
 			: Math.max(MIN_W, stack[stack.length - 1].x + stack[stack.length - 1].w + SLEEVE)
 	);
-
-	/** Where the bar's weight is written: the clear run past the last plate. */
-	const barLabelX = $derived(
-		stack.length === 0 ? W * 0.62 : (stack[stack.length - 1].x + stack[stack.length - 1].w + W) / 2
-	);
 </script>
 
 <svg viewBox="0 0 {W} {H}" role="img" aria-label={label} class="diagram" class:short>
@@ -96,11 +87,13 @@
 		{/if}
 	{:else if loading.kind === 'fixed'}
 		<!-- A fixed dumbbell: one solid object, nothing to hang. -->
-		<rect class="ink" x={W / 2 - 34} y={AXIS - 7} width="68" height="14" rx="7" />
-		<rect class="plate fixed-bell" x={W / 2 - 72} y={AXIS - 40} width="38" height="80" rx="9" />
-		<rect class="plate fixed-bell" x={W / 2 + 34} y={AXIS - 40} width="38" height="80" rx="9" />
-		<text class="bar-weight" x={W / 2} y={AXIS} text-anchor="middle" dominant-baseline="central">
-			{plateLabel(loading.weight)}
+		<rect class="ink" x={W / 2 - 34} y={AXIS - 22} width="68" height="14" rx="7" />
+		<rect class="plate fixed-bell" x={W / 2 - 72} y={AXIS - 55} width="38" height="80" rx="9" />
+		<rect class="plate fixed-bell" x={W / 2 + 34} y={AXIS - 55} width="38" height="80" rx="9" />
+		<!-- Under the bell, not inside it: a dumbbell is cast with its weight on
+		     the end, but at this size the number fought the shape it sat in. -->
+		<text class="fixed-weight" x={W / 2} y={AXIS + 46} text-anchor="middle">
+			{plateLabel(loading.weight)} lb
 		</text>
 	{:else}
 		<!-- The shaft runs the full width: off the left edge toward the middle of
@@ -108,17 +101,6 @@
 		<rect class="ink" x="0" y={AXIS - SHAFT_H / 2} width={W} height={SHAFT_H} rx={SHAFT_H / 2} />
 		<!-- The collar the plates sit against. -->
 		<rect class="ink collar" x={FIRST - 12} y={AXIS - 22} width="10" height="44" rx="4" />
-
-		{#if barWeight > 0}
-			<!-- The bar's own weight, written where it is: on the bar. -->
-			<text
-				class="bar-weight"
-				x={barLabelX}
-				y={AXIS}
-				text-anchor="middle"
-				dominant-baseline="central">{plateLabel(barWeight)}</text
-			>
-		{/if}
 
 		{#each stack as plate, i (i)}
 			<!--
@@ -194,11 +176,11 @@
 		font-weight: 600;
 		letter-spacing: -0.02em;
 	}
-	.bar-weight {
+	.fixed-weight {
 		font-family: var(--font-heading);
 		font-weight: 600;
-		font-size: 19px;
-		fill: var(--color-neutral-500);
+		font-size: 22px;
+		fill: var(--color-text);
 	}
 	/* A load the plates cannot actually make is drawn in outline, so the diagram
 	   itself says "this is not what you will end up with". The accent is used

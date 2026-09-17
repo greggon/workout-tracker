@@ -47,11 +47,11 @@
 		{/each}
 	</ul>
 
+	<h2 class="label section section-lead">Up next</h2>
 	<section class="hero card">
 		<div class="hero-head">
 			<span class="badge">{upNext.key}</span>
 			<span class="hero-text">
-				<span class="card-kicker">Up next</span>
 				<span class="hero-title">{upNext.title}</span>
 			</span>
 		</div>
@@ -114,10 +114,6 @@
 <style>
 	.hero {
 		gap: 0;
-		/* The stats row above ends flush, and a card butting straight onto it
-		   reads as one block. This is the seam between two sections, so it gets
-		   more air than the 24px rhythm between a heading and its own content. */
-		margin-top: 30px;
 	}
 	.hero-head {
 		display: flex;
@@ -256,6 +252,11 @@
 	   adding its own on top of it. */
 	.section-top {
 		margin-top: 0;
+	}
+	/* The seam between the month's figures and the day in front of you gets more
+	   air than the 24px rhythm between a heading and its own content. */
+	.section-lead {
+		margin-top: 32px;
 	}
 
 	.rotation {

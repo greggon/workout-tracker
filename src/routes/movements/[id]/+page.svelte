@@ -91,12 +91,20 @@
 	}
 	.chart-card {
 		background: var(--color-surface);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-lg);
 		box-shadow: var(--shadow-sm);
 		padding: 18px 14px 8px;
 	}
+	/* The table on the same surface as the chart above it: two readings of the
+	   same history, so they should look like two of the same thing. The rounded
+	   corners clip the horizontal scroll, which is what keeps a wide table from
+	   poking out of the card on a narrow phone. */
 	.table-wrap {
 		overflow-x: auto;
+		padding: 2px 14px;
+		border-radius: var(--radius-lg);
+		background: var(--color-surface);
+		box-shadow: var(--shadow-sm);
 	}
 	.right {
 		text-align: right;

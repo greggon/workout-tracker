@@ -41,7 +41,7 @@
 {/if}
 
 <h6 class="label">Split</h6>
-<form method="POST" action="?/split" use:enhance class="seg">
+<form method="POST" action="?/split" use:enhance class="seg split">
 	{#each splitOptions as size (size)}
 		<label class="seg-opt">
 			<input
@@ -133,6 +133,41 @@
 	.label {
 		color: var(--color-neutral-500);
 		margin: 26px 0 10px;
+	}
+
+	/*
+	 * The split picker as a card rather than the shared pill: it is the page's
+	 * first section, and every other section here is a full-width card, so a
+	 * short pill floating on the page ground was the odd one out. The `.seg`
+	 * utility keeps its own shape for anywhere else that wants it.
+	 */
+	.split {
+		display: flex;
+		width: 100%;
+		gap: 5px;
+		padding: 5px;
+		border: 0;
+		border-radius: var(--radius-lg);
+		background: var(--color-surface);
+		box-shadow: var(--shadow-sm);
+	}
+	.split .seg-opt {
+		flex: 1;
+		min-width: 0;
+		justify-content: center;
+		padding: 11px 6px;
+		font-size: 13px;
+		border-radius: var(--radius-md);
+	}
+	/* The hairline between options belongs to the pill; inside a card the
+	   selected chip is what separates them. */
+	.split .seg-opt + .seg-opt {
+		border-left: 0;
+	}
+	@media (pointer: coarse) {
+		.split .seg-opt {
+			min-height: 44px;
+		}
 	}
 	.hint {
 		font-size: 12px;

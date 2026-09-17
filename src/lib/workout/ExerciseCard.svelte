@@ -366,7 +366,7 @@
 		font-size: 13.5px;
 		font-family: var(--font-heading);
 		font-weight: var(--font-heading-weight);
-		color: var(--color-neutral-400);
+		color: var(--color-text);
 	}
 	.load-movement {
 		min-width: 0;
@@ -374,12 +374,11 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	/* The movement's total, alongside its name. Full ink, but no heavier than the
-	   name it sits with — the drawing below is what carries the emphasis. */
+	/* The movement's total reads as part of its name, so it takes the same ink
+	   and the same weight; the drawing below is what carries the emphasis. */
 	.load-total {
 		flex: none;
 		white-space: nowrap;
-		color: var(--color-text);
 	}
 	/* What the drawing cannot say: "per side", "bar only", "2.5 lb short". */
 	.load-note {

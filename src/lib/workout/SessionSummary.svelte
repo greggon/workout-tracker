@@ -25,18 +25,15 @@
 					: 'Level with last time.'
 	);
 
+	/*
+	 * Three figures, one row. No notes under them: the volume's read "Up 320 lb
+	 * on last time", which is the headline printed directly above this, and the
+	 * other two were decoration that cost the row its width on a phone.
+	 */
 	const stats = $derived([
-		{ label: 'Volume', value: `${formatVolume(summary.volume)} lb`, note: headline },
-		{
-			label: 'Time',
-			value: formatMinutes(summary.durationMins),
-			note: 'door to door'
-		},
-		{
-			label: 'Sets logged',
-			value: String(summary.setCount),
-			note: `across ${summary.rows.length} movements`
-		}
+		{ label: 'Volume', value: `${formatVolume(summary.volume)} lb` },
+		{ label: 'Time', value: formatMinutes(summary.durationMins) },
+		{ label: 'Sets', value: String(summary.setCount) }
 	]);
 
 	// --- volume chart -------------------------------------------------------
@@ -84,7 +81,6 @@
 			<li>
 				<div class="stat-label">{stat.label}</div>
 				<div class="stat-value num">{stat.value}</div>
-				<div class="stat-note">{stat.note}</div>
 			</li>
 		{/each}
 	</ul>
@@ -118,7 +114,7 @@
 	</div>
 
 	<h6 class="section">Per movement</h6>
-	<ul class="rows">
+	<ul class="rows card-list">
 		{#each summary.rows as row (row.movementId)}
 			<li class="row">
 				<span class="row-name">{row.name}</span>
@@ -149,9 +145,15 @@
 		letter-spacing: -0.03em;
 		margin: 0 0 8px;
 	}
+	/*
+	 * One rhythm down the page: 10px between a line of type and the card it
+	 * introduces, 30px between one section and the next. This line is the stats
+	 * card's heading in all but name, so it sits the same distance from its card
+	 * as "Volume · last 4 B days" does from the chart.
+	 */
 	.sub {
 		max-width: 48ch;
-		margin: 0 0 24px;
+		margin: 0 0 10px;
 	}
 	.notice {
 		font-size: 13px;
@@ -159,7 +161,7 @@
 		background: var(--color-accent-900);
 		border-radius: var(--radius-md);
 		padding: var(--space-3) var(--space-4);
-		margin-bottom: 22px;
+		margin-bottom: 10px;
 		max-width: 56ch;
 	}
 
@@ -169,11 +171,21 @@
 		margin: 0;
 		padding: 0;
 	}
+	/* One card, three equal columns — three figures that are read together, so
+	   they sit together. Fixed columns rather than auto-fit: these never wrap to
+	   a second row, however narrow the phone. */
 	.stats {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-		gap: 14px;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 10px;
 		margin-bottom: 30px;
+		padding: 14px 16px 15px;
+		border-radius: var(--radius-lg);
+		background: var(--color-surface);
+		box-shadow: var(--shadow-sm);
+	}
+	.stats > li {
+		min-width: 0;
 	}
 	.stat-label {
 		font-size: 9.5px;
@@ -181,14 +193,12 @@
 		text-transform: uppercase;
 		color: var(--color-neutral-500);
 	}
+	/* Sized to the column so a five-figure volume still fits beside the other
+	   two on the narrowest phone. */
 	.stat-value {
 		font-family: var(--font-heading);
-		font-size: 28px;
+		font-size: clamp(17px, 6vw, 27px);
 		line-height: 1.15;
-	}
-	.stat-note {
-		font-size: 11.5px;
-		color: var(--color-neutral-500);
 	}
 
 	.section {
@@ -197,7 +207,7 @@
 	}
 	.chart {
 		background: var(--color-surface);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-lg);
 		box-shadow: var(--shadow-sm);
 		padding: 12px 8px 4px;
 		margin-bottom: 30px;
@@ -232,11 +242,19 @@
 		fill: var(--color-neutral-600);
 	}
 
+	/* The per-movement list, on the card surface. The heading stays outside it,
+	   the way every other section on the home screen reads. */
+	.card-list {
+		padding: 2px 16px;
+		border-radius: var(--radius-lg);
+		background: var(--color-surface);
+		box-shadow: var(--shadow-sm);
+	}
 	.row {
 		display: flex;
 		align-items: baseline;
 		gap: 10px;
-		padding: 9px 0;
+		padding: 10px 0;
 		border-bottom: 1px solid var(--color-divider);
 	}
 	.row:last-child {

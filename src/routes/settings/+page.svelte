@@ -1,6 +1,14 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { describeStock, loadingLabel, normalizeStock, perSideStock } from '$lib/plates';
+	import { enhance } from '$app/forms';
+	import { beforeNavigate, goto } from '$app/navigation';
+	import {
+		describeStock,
+		equipmentChanged,
+		loadingParts,
+		normalizeStock,
+		perSideStock
+	} from '$lib/plates';
 	import PlateDiagram from '$lib/workout/PlateDiagram.svelte';
 	import {
 		DEFAULT_PLATE_COLOR,
@@ -81,6 +89,84 @@
 		}
 	}
 
+	/**
+	 * Whether anything has been typed that a save would write.
+	 *
+	 * The three editable values are writable `$derived`s over `data.settings`, so
+	 * they snap back to the stored equipment whenever the page's data changes —
+	 * which is what makes both "has it changed" and "put it back" one-liners.
+	 */
+	const dirty = $derived(
+		equipmentChanged(
+			{
+				barWeight: data.settings.barWeight,
+				ezBarWeight: data.settings.ezBarWeight,
+				inventory: data.settings.plateInventory
+			},
+			{
+				barWeight: Number(barWeight) || 0,
+				ezBarWeight: Number(ezBarWeight) || 0,
+				inventory: rows
+			}
+		)
+	);
+
+	/** Throws the edits away by re-reading what is stored. */
+	function discard() {
+		barWeight = data.settings.barWeight;
+		ezBarWeight = data.settings.ezBarWeight;
+		rows = normalizeStock(data.settings.plateInventory);
+	}
+
+	/**
+	 * Unsaved edits are only ever mentioned on the way out.
+	 *
+	 * Setting up a rack is a long sitting — several plates, their counts and
+	 * their colors — and something on screen telling you to save the whole time
+	 * is noise you learn to look past. Leaving the page is the one moment the
+	 * edits are actually about to be lost, so that is the only moment this says
+	 * anything.
+	 */
+	let leavingTo = $state<URL | null>(null);
+	let saveThenLeave = false;
+	let equipmentForm: HTMLFormElement;
+
+	beforeNavigate((nav) => {
+		if (!dirty) return;
+		// Staying on this page — a save, or a link back to it.
+		if (nav.to?.route.id === '/settings') return;
+
+		if (nav.type === 'leave') {
+			// Closing the tab or reloading: the browser owns this dialog, and
+			// cancelling is what asks it to put one up.
+			nav.cancel();
+			return;
+		}
+
+		nav.cancel();
+		leavingTo = nav.to?.url ?? null;
+	});
+
+	function keepEditing() {
+		leavingTo = null;
+	}
+
+	async function discardAndLeave() {
+		const to = leavingTo;
+		leavingTo = null;
+		discard();
+		// Already-resolved, as above.
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		if (to) await goto(to);
+	}
+
+	/** Saves through the enhanced submit, then carries on to wherever you were
+	 *  going — the point of the prompt is not to strand you here. */
+	function saveAndLeave() {
+		saveThenLeave = true;
+		equipmentForm.requestSubmit();
+	}
+
 	/** A cleared number field is empty, not zero — do not render NaN into it. */
 	const shown = (value: number) => (Number.isFinite(value) ? value : '');
 </script>
@@ -99,37 +185,57 @@
 	<p class="notice ok" role="status">Saved.</p>
 {/if}
 
-<form method="POST" action="?/save">
-	<div class="row">
-		<label class="field short">
-			<span>Bar</span>
-			<input
-				class="input num"
-				type="number"
-				step="0.5"
-				min="0"
-				inputmode="decimal"
-				name="barWeight"
-				bind:value={barWeight}
-			/>
-		</label>
-		<label class="field short">
-			<span>EZ curl bar</span>
-			<input
-				class="input num"
-				type="number"
-				step="0.5"
-				min="0"
-				inputmode="decimal"
-				name="ezBarWeight"
-				bind:value={ezBarWeight}
-			/>
-		</label>
+<form
+	method="POST"
+	action="?/save"
+	bind:this={equipmentForm}
+	use:enhance={() =>
+		async ({ update }) => {
+			// Applies the result and reloads the stored equipment, which is what
+			// clears `dirty` — so the navigation below no longer asks anything.
+			await update();
+			if (!saveThenLeave) return;
+			saveThenLeave = false;
+			const to = leavingTo;
+			leavingTo = null;
+			// The destination came from SvelteKit's own navigation event, so it is
+			// already a resolved URL; resolve() would be resolving a resolved path.
+			// eslint-disable-next-line svelte/no-navigation-without-resolve
+			if (to) await goto(to);
+		}}
+>
+	<div class="panel">
+		<div class="row fill">
+			<label class="field">
+				<span>Bar</span>
+				<input
+					class="input num"
+					type="number"
+					step="0.5"
+					min="0"
+					inputmode="decimal"
+					name="barWeight"
+					bind:value={barWeight}
+				/>
+			</label>
+			<label class="field">
+				<span>EZ curl bar</span>
+				<input
+					class="input num"
+					type="number"
+					step="0.5"
+					min="0"
+					inputmode="decimal"
+					name="ezBarWeight"
+					bind:value={ezBarWeight}
+				/>
+			</label>
+		</div>
 	</div>
 
 	<div class="section-head">
 		<h6 class="label">Plates you own</h6>
-		<button type="button" class="btn btn-ghost toggle" onclick={toggleColors}>
+		<button type="button" class="btn btn-secondary toggle" onclick={toggleColors}>
 			{showColors ? 'Hide colors' : 'Show colors'}
 		</button>
 	</div>
@@ -140,63 +246,66 @@
 	</p>
 
 	<input type="hidden" name="rows" value={rows.length} />
-	<ul class="plates" class:no-colors={!showColors}>
-		<li class="plates-head">
-			<span>Weight</span>
-			<span>Count</span>
-			{#if showColors}<span>Color</span>{/if}
-			<span></span>
-		</li>
-		{#each rows as row, i (i)}
-			<li class="plate-row">
-				<input
-					class="input num"
-					type="number"
-					step="0.25"
-					min="0"
-					inputmode="decimal"
-					name="weight-{i}"
-					value={shown(row.weight)}
-					oninput={(e) => update(i, { weight: e.currentTarget.valueAsNumber })}
-					aria-label="Plate weight"
-				/>
-				<input
-					class="input num"
-					type="number"
-					step="1"
-					min="0"
-					inputmode="numeric"
-					name="count-{i}"
-					value={shown(row.count)}
-					oninput={(e) => update(i, { count: e.currentTarget.valueAsNumber })}
-					aria-label="How many you own"
-				/>
-				{#if showColors}
+	<div class="panel plates-panel">
+		<ul class="plates" class:no-colors={!showColors}>
+			<li class="plates-head">
+				<span>Weight</span>
+				<span>Count</span>
+				{#if showColors}<span>Color</span>{/if}
+				<span></span>
+			</li>
+			{#each rows as row, i (i)}
+				<li class="plate-row">
 					<input
-						class="swatch"
-						type="color"
-						name="color-{i}"
-						value={row.color}
-						oninput={(e) => update(i, { color: e.currentTarget.value })}
-						aria-label="Color of the {row.weight} lb plates"
+						class="input num"
+						type="number"
+						step="0.25"
+						min="0"
+						inputmode="decimal"
+						name="weight-{i}"
+						value={shown(row.weight)}
+						oninput={(e) => update(i, { weight: e.currentTarget.valueAsNumber })}
+						aria-label="Plate weight"
 					/>
-				{:else}
-					<!--
+					<input
+						class="input num"
+						type="number"
+						step="1"
+						min="0"
+						inputmode="numeric"
+						name="count-{i}"
+						value={shown(row.count)}
+						oninput={(e) => update(i, { count: e.currentTarget.valueAsNumber })}
+						aria-label="How many you own"
+					/>
+					{#if showColors}
+						<input
+							class="swatch"
+							type="color"
+							name="color-{i}"
+							value={row.color}
+							oninput={(e) => update(i, { color: e.currentTarget.value })}
+							aria-label="Color of the {row.weight} lb plates"
+						/>
+					{:else}
+						<!--
 						The color still has to be submitted while the picker is hidden.
 						Without this the field is absent from the form, the server reads no
 						color, and hiding the column would quietly repaint every plate
 						black on the next save. A hidden input is display:none by the UA
 						stylesheet, so it adds no grid cell.
 					-->
-					<input type="hidden" name="color-{i}" value={row.color} />
-				{/if}
-				<button type="button" class="btn btn-ghost drop" onclick={() => removeRow(i)}>Remove</button
-				>
-			</li>
-		{/each}
-	</ul>
+						<input type="hidden" name="color-{i}" value={row.color} />
+					{/if}
+					<button type="button" class="btn btn-secondary drop" onclick={() => removeRow(i)}>
+						Remove
+					</button>
+				</li>
+			{/each}
+		</ul>
 
-	<button type="button" class="btn btn-secondary btn-block" onclick={addRow}>Add a plate</button>
+		<button type="button" class="btn btn-secondary add" onclick={addRow}>Add a plate</button>
+	</div>
 
 	<p class="text-muted hint">Reads as: {describeStock(rows)}</p>
 	{#if perSide.length === 0 && usable}
@@ -205,40 +314,67 @@
 		</p>
 	{/if}
 
-	<button class="btn btn-primary save" type="submit" disabled={!usable}>Save equipment</button>
+	<div class="save-row">
+		<button class="btn btn-primary" type="submit" disabled={!usable}>Save equipment</button>
+	</div>
 </form>
 
 <h6 class="label">Try a weight</h6>
-<div class="row">
-	<label class="field short">
-		<span>Weight</span>
-		<input
-			class="input num"
-			type="number"
-			step="0.5"
-			min="0"
-			inputmode="decimal"
-			bind:value={sampleWeight}
-		/>
-	</label>
-	<label class="field tool">
-		<span>Tool</span>
-		<select class="input" bind:value={sampleTool}>
-			{#each TOOLS as tool (tool)}
-				<option value={tool}>{TOOL_LABELS[tool]}</option>
-			{/each}
-		</select>
-	</label>
+<div class="panel">
+	<div class="row fill">
+		<label class="field">
+			<span>Weight</span>
+			<input
+				class="input num"
+				type="number"
+				step="0.5"
+				min="0"
+				inputmode="decimal"
+				bind:value={sampleWeight}
+			/>
+		</label>
+		<label class="field">
+			<span>Tool</span>
+			<select class="input" bind:value={sampleTool}>
+				{#each TOOLS as tool (tool)}
+					<option value={tool}>{TOOL_LABELS[tool]}</option>
+				{/each}
+			</select>
+		</label>
+	</div>
 </div>
 
+{#if leavingTo}
+	<!-- Only ever on the way out; see beforeNavigate above. -->
+	<div class="dialog-backdrop">
+		<div class="dialog" role="dialog" aria-modal="true" aria-labelledby="unsaved-title">
+			<h3 class="dialog-title" id="unsaved-title">Equipment not saved</h3>
+			<p class="text-muted dialog-text">
+				You have changed your equipment and not saved it. Leaving now throws the changes away.
+			</p>
+			<div class="dialog-actions">
+				<button type="button" class="btn btn-ghost" onclick={keepEditing}>Keep editing</button>
+				<button type="button" class="btn btn-secondary" onclick={discardAndLeave}>Discard</button>
+				<button type="button" class="btn btn-primary" onclick={saveAndLeave} disabled={!usable}>
+					Save and go
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
 {#if usable}
+	{@const sample = loadingParts(sampleTool, Number(sampleWeight) || 0, config)}
+	<!-- The same block as the workout screen and the routine editor: the weight,
+	     what it cannot say about itself, then the drawing under both. -->
 	<div class="preview">
+		<div class="load-total num">{sample.total}</div>
+		{#if sample.note}
+			<div class="load-note num">{sample.note}</div>
+		{/if}
 		<span class="art">
 			<PlateDiagram tool={sampleTool} weight={Number(sampleWeight) || 0} {config} />
 		</span>
-		<span class="num preview-text"
-			>{loadingLabel(sampleTool, Number(sampleWeight) || 0, config)}</span
-		>
 	</div>
 {/if}
 
@@ -267,12 +403,36 @@
 		background: var(--color-neutral-900);
 	}
 
+	/*
+	 * Every group on this page sits on a card: the bars, the plate table, and the
+	 * sampler at the bottom. They are three separate things you set, and on the
+	 * page ground they ran together as one long form.
+	 */
+	.panel {
+		padding: 14px 16px 16px;
+		margin-bottom: 12px;
+		border-radius: var(--radius-lg);
+		background: var(--color-surface);
+		box-shadow: var(--shadow-sm);
+	}
+	.plates-panel {
+		padding: 12px 14px 14px;
+	}
+
 	.row {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 10px;
 		align-items: flex-end;
 		margin-bottom: 12px;
+	}
+	/* Inside a card the fields share its width rather than sitting at a fixed
+	   size with the rest of the card empty beside them. */
+	.row.fill {
+		margin-bottom: 0;
+	}
+	.row.fill .field {
+		flex: 1 1 0;
 	}
 	.field {
 		flex: 1 1 200px;
@@ -283,12 +443,6 @@
 		font-size: 11px;
 		margin-bottom: 4px;
 		color: var(--color-neutral-500);
-	}
-	.short {
-		flex: 0 0 130px;
-	}
-	.tool {
-		flex: 0 0 150px;
 	}
 	.hint {
 		font-size: 12px;
@@ -319,11 +473,19 @@
 		--plate-cols: 1fr 1fr var(--swatch-w) var(--remove-w);
 		/* Sized by the COLOR heading; the swatch fits whatever it is given. */
 		--swatch-w: 58px;
-		/* Sized by the Remove button at its 12px font. */
-		--remove-w: 72px;
+		/* Sized by the Remove button: a bordered pill, tight padding, 12px text. */
+		--remove-w: 74px;
 	}
 	.plates.no-colors {
 		--plate-cols: 1fr 1fr var(--remove-w);
+	}
+	/* On the narrowest phones the two fixed columns start eating the fields they
+	   sit beside, and a weight you cannot read is worse than a tight button. */
+	@media (max-width: 360px) {
+		.plates {
+			--swatch-w: 46px;
+			--remove-w: 64px;
+		}
 	}
 	.plates-head,
 	.plate-row {
@@ -415,37 +577,59 @@
 		flex: none;
 		font-size: 12px;
 	}
+	/* The same bordered pill as "Add a plate" and every other button on the page.
+	   It fills its fixed track rather than sizing it, which is what keeps the
+	   heading row and the plate rows on the same columns, and takes a height so
+	   it lines up with the inputs beside it on a pointer as well as on touch. */
 	.drop {
 		font-size: 12px;
-		color: var(--color-neutral-400);
-		/* Fills its fixed track rather than sizing it, which is what keeps the
-		   heading row and the plate rows on the same columns. */
-		padding-inline: 0;
+		height: 40px;
+		padding-inline: 4px;
 		justify-self: stretch;
 	}
-	.save {
-		margin-top: 8px;
+	/* The one button that writes anything, at the end of the form the way a
+	   dialog puts its confirm on the right. */
+	.save-row {
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		gap: 10px;
+		margin-top: 12px;
+	}
+	.add {
+		margin-top: 10px;
+		width: 100%;
+	}
+
+	.dialog-text {
+		font-size: 13.5px;
+		margin: 0;
 	}
 
 	.preview {
-		display: flex;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: 10px 14px;
+		display: grid;
+		gap: 6px;
+		min-width: 0;
 		background: var(--color-surface);
 		border-radius: var(--radius-lg);
 		box-shadow: var(--shadow-sm);
-		padding: 14px;
+		padding: 14px 16px 16px;
 	}
-	/* Roomier here than in a list: this is the drawing you study while you are
-	   deciding what color a plate is. */
-	.art {
-		flex: 1 1 260px;
-		max-width: 360px;
+	.load-total {
+		font-family: var(--font-heading);
+		font-weight: var(--font-heading-weight);
+		font-size: 13.5px;
+		color: var(--color-text);
 	}
-	.preview-text {
-		font-size: 12.5px;
+	.load-note {
+		font-size: 11.5px;
 		color: var(--color-neutral-500);
-		min-width: 0;
+		margin-top: -3px;
+	}
+	/* The workout screen's size, so the same lift looks the same everywhere. */
+	.art {
+		display: block;
+		width: 100%;
+		max-width: 150px;
 	}
 </style>

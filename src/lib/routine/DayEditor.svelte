@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { loadingLabel, type LoadingConfig } from '$lib/plates';
+	import { loadingParts, type LoadingConfig } from '$lib/plates';
 	import PlateDiagram from '$lib/workout/PlateDiagram.svelte';
 	import { TOOLS, TOOL_LABELS, type Tool } from '$lib/types';
 
@@ -117,6 +117,7 @@
 -->
 {#snippet movementFields(movement: MovementFields, i: number, paired: boolean)}
 	{@const names = fieldNames(i, paired)}
+	{@const load = loadingParts(movement.tool, movement.weight, loading)}
 	<div class="movement" class:paired>
 		<label class="field">
 			<span>{paired ? 'Paired with' : 'Movement'}</span>
@@ -149,11 +150,18 @@
 			/>
 		</label>
 
+		<!-- The same block as the workout screen: the weight, what it cannot say
+		     about itself, then the drawing under both. -->
 		<div class="load">
+			<div class="load-text">
+				<div class="load-total num">{load.total}</div>
+				{#if load.note}
+					<div class="load-note num">{load.note}</div>
+				{/if}
+			</div>
 			<span class="art">
 				<PlateDiagram tool={movement.tool} weight={movement.weight} config={loading} />
 			</span>
-			<span class="load-text num">{loadingLabel(movement.tool, movement.weight, loading)}</span>
 		</div>
 	</div>
 {/snippet}
@@ -369,22 +377,29 @@
 
 	.load {
 		flex: 1 1 100%;
-		display: flex;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: 6px 10px;
+		display: grid;
+		gap: 6px;
 		min-width: 0;
 	}
-	/* Wide enough that the numbers on the plates can be read; the drawing is
-	   worth nothing at a size where they cannot. */
+	/* The workout screen's size, so the same lift looks the same in both. */
 	.art {
-		flex: 1 1 240px;
-		max-width: 320px;
+		display: block;
+		width: 100%;
+		max-width: 150px;
 	}
 	.load-text {
+		min-width: 0;
+	}
+	.load-total {
+		font-family: var(--font-heading);
+		font-weight: var(--font-heading-weight);
+		font-size: 13.5px;
+		color: var(--color-text);
+	}
+	.load-note {
 		font-size: 11.5px;
 		color: var(--color-neutral-500);
-		min-width: 0;
+		margin-top: 1px;
 	}
 
 	.field {

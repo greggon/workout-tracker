@@ -442,12 +442,16 @@
 		{/each}
 	</ul>
 
+	<!--
+		One card, split down the middle: the two ways a workout can end, given
+		equal room and a line between them so neither is tapped for the other.
+	-->
 	<div class="actions">
-		<button class="btn btn-primary" onclick={finish} disabled={saving}>
+		<button class="btn act finish" onclick={finish} disabled={saving}>
 			{saving ? 'Saving…' : 'Finish workout'}
 		</button>
 		<button
-			class="btn btn-secondary"
+			class="btn act quit"
 			class:danger={confirmQuit}
 			type="button"
 			onclick={pressQuit}
@@ -500,17 +504,47 @@
 	}
 
 	.actions {
-		display: flex;
-		gap: 10px;
+		display: grid;
+		grid-template-columns: 1fr 1fr;
 		margin-top: 26px;
+		border-radius: var(--radius-lg);
+		background: var(--color-surface);
+		box-shadow: var(--shadow-sm);
+		/* The halves square off their own corners; the card rounds them. */
+		overflow: hidden;
 	}
-	.actions .btn {
+	.act {
+		min-height: 60px;
+		padding: 12px;
+		border: 0;
+		border-radius: 0;
+		font-size: 14.5px;
+		/* "Discard 7 sets?" is longer than the label it replaces. */
+		white-space: normal;
+		line-height: 1.25;
 		text-decoration: none;
 	}
-	.danger {
+	.finish {
+		color: var(--color-accent-100);
+		background: var(--color-accent-800);
+	}
+	.finish:hover:not(:disabled) {
+		background: color-mix(in srgb, var(--color-accent) 22%, var(--color-accent-800));
+	}
+	/* The hairline is what stops a thumb aimed at one landing on the other. */
+	.quit {
+		color: var(--color-neutral-500);
+		box-shadow: inset 1px 0 0 var(--color-divider);
+	}
+	.quit:hover:not(:disabled) {
+		color: var(--color-text);
+		background: color-mix(in srgb, var(--color-text) 6%, transparent);
+	}
+	/* Armed: one more tap throws the workout away, and it says how much. */
+	.danger,
+	.danger:hover:not(:disabled) {
 		color: var(--color-danger);
 		background: var(--color-danger-bg);
-		border-color: var(--color-danger);
 	}
 
 	.pending {
@@ -535,15 +569,25 @@
 		letter-spacing: -0.03em;
 		margin-bottom: 8px;
 	}
+	/* Same rhythm as the saved summary this screen turns into. */
 	.sub {
 		max-width: 48ch;
-		margin: 0 0 26px;
+		margin: 0 0 10px;
 	}
+	/* The same card as the saved summary shows a moment later — this screen is
+	   only up until the server answers, so the two must not jump. */
 	.stats {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-		gap: 14px;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 10px;
 		margin-bottom: 22px;
+		padding: 14px 16px 15px;
+		border-radius: var(--radius-lg);
+		background: var(--color-surface);
+		box-shadow: var(--shadow-sm);
+	}
+	.stats > li {
+		min-width: 0;
 	}
 	.stat-label {
 		font-size: 9.5px;
@@ -553,7 +597,7 @@
 	}
 	.stat-value {
 		font-family: var(--font-heading);
-		font-size: 28px;
+		font-size: clamp(17px, 6vw, 27px);
 		line-height: 1.15;
 	}
 </style>

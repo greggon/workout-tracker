@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	describeLoading,
+	equipmentChanged,
 	describePlates,
 	loadingParts,
 	describeStock,
@@ -401,5 +402,57 @@ describe('the two halves of a setup line', () => {
 	it('still flags a load the rack cannot quite make', () => {
 		const load = loadingParts('barbell', 1000, HOME);
 		expect(load.setup).toContain('short');
+	});
+});
+
+describe('knowing the equipment form has unsaved edits', () => {
+	const saved = {
+		barWeight: 45,
+		ezBarWeight: 30,
+		inventory: [plate(45, 6, '#0000ff'), plate(25, 4), plate(2.5, 4)]
+	};
+
+	it('says nothing changed when nothing changed', () => {
+		expect(equipmentChanged(saved, { ...saved, inventory: [...saved.inventory] })).toBe(false);
+	});
+
+	it('is not fooled by how a number was typed', () => {
+		// The form hands back numbers from an <input type=number>; 45 and 45.0 are
+		// the same bar, and warning about that would train you to ignore it.
+		expect(equipmentChanged(saved, { ...saved, barWeight: 45.0 })).toBe(false);
+	});
+
+	it('catches a bar weight, a count, a color and a whole plate', () => {
+		expect(equipmentChanged(saved, { ...saved, barWeight: 35 })).toBe(true);
+		expect(equipmentChanged(saved, { ...saved, ezBarWeight: 25 })).toBe(true);
+		expect(
+			equipmentChanged(saved, {
+				...saved,
+				inventory: [plate(45, 8, '#0000ff'), plate(25, 4), plate(2.5, 4)]
+			})
+		).toBe(true);
+		expect(
+			equipmentChanged(saved, {
+				...saved,
+				inventory: [plate(45, 6, '#ff0000'), plate(25, 4), plate(2.5, 4)]
+			})
+		).toBe(true);
+		expect(
+			equipmentChanged(saved, { ...saved, inventory: [...saved.inventory, plate(10, 2)] })
+		).toBe(true);
+		expect(equipmentChanged(saved, { ...saved, inventory: saved.inventory.slice(1) })).toBe(true);
+	});
+
+	it('ignores a row that is still being typed', () => {
+		// "Add a plate" starts at zero, which the server drops. Warning about a
+		// change that a save would not make is a warning about nothing.
+		const empty = { weight: 0, count: 2, color: DEFAULT_PLATE_COLOR };
+		expect(equipmentChanged(saved, { ...saved, inventory: [...saved.inventory, empty] })).toBe(
+			false
+		);
+		// The moment it has a weight, it counts.
+		expect(
+			equipmentChanged(saved, { ...saved, inventory: [...saved.inventory, plate(10, 2)] })
+		).toBe(true);
 	});
 });
