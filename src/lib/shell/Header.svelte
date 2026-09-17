@@ -17,7 +17,7 @@
 	 * The clocks stay on `chrome`: those genuinely only exist once a workout is
 	 * running in the browser.
 	 */
-	const header = $derived<PageHeader>(page.data.header ?? { kicker: '', title: '' });
+	const header = $derived<PageHeader>(page.data.header ?? { title: '' });
 
 	const showClocks = $derived(chrome.sessionClock !== null);
 	const progressPct = $derived(

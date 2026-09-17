@@ -33,7 +33,7 @@
 </script>
 
 <svelte:head>
-	<title>My routine</title>
+	<title>My Routine</title>
 </svelte:head>
 
 {#if form?.message}

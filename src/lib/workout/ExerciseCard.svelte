@@ -126,7 +126,7 @@
 							</div>
 							<a
 								class="btn btn-ghost history"
-								href="{resolve('/movements/[id]', {
+								href="{resolve('/history/[id]', {
 									id: movement.movementId
 								})}?back={encodeURIComponent(page.url.pathname)}"
 							>

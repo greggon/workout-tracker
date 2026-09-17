@@ -12,12 +12,18 @@
  * fills in only after hydration — a flash on every load.
  */
 export type PageHeader = {
-	/** Small caps, above the title. */
-	kicker: string;
+	/**
+	 * Small caps, above the title. Omitted on the screens whose title says it
+	 * all — a kicker reading "Routine" over a title reading "My Routine" is the
+	 * same word twice in two sizes.
+	 */
+	kicker?: string;
 	title: string;
 	/**
-	 * Where the back chevron goes. Omitted on a root screen. Already-resolved,
-	 * because it crosses the load boundary as a plain string.
+	 * Where the back chevron goes. Omitted on the four tab screens: they are
+	 * destinations, not somewhere you drill into, and the tab bar is already the
+	 * way between them. Already-resolved, because it crosses the load boundary
+	 * as a plain string.
 	 */
 	back?: string | null;
 };

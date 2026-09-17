@@ -18,7 +18,7 @@ export type Destination = {
 
 export function destinations(): Destination[] {
 	return [
-		{ label: 'Today', href: resolve('/'), icon: 'today', match: (p) => p === '/' },
+		{ label: 'Up Next', href: resolve('/'), icon: 'today', match: (p) => p === '/' },
 		{
 			label: 'Routine',
 			href: resolve('/routine'),
@@ -27,15 +27,15 @@ export function destinations(): Destination[] {
 		},
 		{
 			label: 'History',
-			href: resolve('/movements'),
+			href: resolve('/history'),
 			icon: 'history',
-			match: (p) => p.startsWith('/movements')
+			match: (p) => p.startsWith('/history')
 		},
 		{
 			label: 'Gear',
-			href: resolve('/settings'),
+			href: resolve('/gear'),
 			icon: 'gear',
-			match: (p) => p.startsWith('/settings')
+			match: (p) => p.startsWith('/gear')
 		}
 	];
 }

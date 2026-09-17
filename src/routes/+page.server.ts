@@ -30,10 +30,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		recent.length ? recent.reduce((total, s) => total + pick(s), 0) / recent.length : 0;
 
 	return {
-		header: {
-			kicker: `Rotation · ${days.length} day split`,
-			title: "Let's lift 💪"
-		} satisfies PageHeader,
+		header: { title: "Let's lift 💪" } satisfies PageHeader,
 		days: rotateFrom(days, lastKey).map((day) => {
 			const planned = plannedFrom(day.exercises);
 			const last = lastPerDay.get(day.key);

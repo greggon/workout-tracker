@@ -18,7 +18,7 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 	 * how a back link becomes someone else's site.
 	 */
 	const requested = url.searchParams.get('back') ?? '';
-	const back = requested.startsWith('/') && !requested.startsWith('//') ? requested : '/movements';
+	const back = requested.startsWith('/') && !requested.startsWith('//') ? requested : '/history';
 
 	return {
 		header: {

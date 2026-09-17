@@ -134,7 +134,7 @@
 	beforeNavigate((nav) => {
 		if (!dirty) return;
 		// Staying on this page — a save, or a link back to it.
-		if (nav.to?.route.id === '/settings') return;
+		if (nav.to?.route.id === '/gear') return;
 
 		if (nav.type === 'leave') {
 			// Closing the tab or reloading: the browser owns this dialog, and
@@ -172,7 +172,7 @@
 </script>
 
 <svelte:head>
-	<title>Equipment</title>
+	<title>My Gear</title>
 </svelte:head>
 
 <p class="text-muted sub">

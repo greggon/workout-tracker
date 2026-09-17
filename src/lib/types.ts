@@ -157,7 +157,7 @@ export function parseHexColor(value: unknown): string | null {
  * hypothetical commercial one, which would confidently prescribe plates that do
  * not exist in the building.
  *
- * Anyone whose gym differs sets their own in /settings; this is only what an
+ * Anyone whose gym differs sets their own in /gear; this is only what an
  * account starts with.
  */
 export const DEFAULT_PLATE_STOCK: PlateStock[] = [

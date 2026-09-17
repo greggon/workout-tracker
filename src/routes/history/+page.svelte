@@ -6,7 +6,7 @@
 	let { data } = $props();
 </script>
 
-<svelte:head><title>History</title></svelte:head>
+<svelte:head><title>My History</title></svelte:head>
 
 {#if data.movements.length === 0}
 	<div class="card">
@@ -17,7 +17,7 @@
 	<ul class="list">
 		{#each data.movements as m (m.movementId)}
 			<li>
-				<a class="row-card" href={resolve('/movements/[id]', { id: m.movementId })}>
+				<a class="row-card" href={resolve('/history/[id]', { id: m.movementId })}>
 					<span class="text">
 						<span class="name">{m.name}</span>
 						<span class="meta">

@@ -215,7 +215,7 @@
 					{#if row.id && movementIds.has(row.id)}
 						<a
 							class="btn btn-ghost history"
-							href="{resolve('/movements/[id]', {
+							href="{resolve('/history/[id]', {
 								id: movementIds.get(row.id)!
 							})}?back={encodeURIComponent(resolve('/routine'))}"
 						>

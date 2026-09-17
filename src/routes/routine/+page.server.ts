@@ -9,7 +9,7 @@ import type { PageHeader } from '$lib/shell/page-header';
 export const load: PageServerLoad = async ({ locals }) => {
 	const days = listDays(getDb(), locals.user.id);
 	return {
-		header: { kicker: 'Routine', title: 'My split', back: '/' } satisfies PageHeader,
+		header: { title: 'My Routine 📅' } satisfies PageHeader,
 		days: days.map((day) => {
 			const planned = plannedFrom(day.exercises);
 			return {

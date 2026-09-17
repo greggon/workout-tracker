@@ -23,7 +23,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		.all();
 
 	return {
-		header: { kicker: 'Every movement', title: 'History', back: '/' } satisfies PageHeader,
+		header: { title: 'My History 📈' } satisfies PageHeader,
 		movements: rows
 	};
 };
