@@ -2,7 +2,7 @@ import { fail } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db';
 import { listDays } from '$lib/server/routine';
 import { reorderDays, setSplit } from '$lib/server/routine-edit';
-import { plannedFrom, plannedSets, plannedVolume } from '$lib/volume';
+import { plannedFrom, plannedMovements, plannedSets, plannedVolume } from '$lib/volume';
 import type { Actions, PageServerLoad } from './$types';
 import type { PageHeader } from '$lib/shell/page-header';
 
@@ -16,7 +16,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 				id: day.id,
 				key: day.key,
 				title: day.title,
-				exerciseCount: day.exercises.length,
+				// Counted the same way the home screen counts it: a superset is two.
+				exerciseCount: plannedMovements(planned),
 				sets: plannedSets(planned),
 				volume: plannedVolume(planned)
 			};

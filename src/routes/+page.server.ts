@@ -1,6 +1,6 @@
 import { getDb } from '$lib/server/db';
 import { countSessions, lastSessionPerDay, listDays, recentSessions } from '$lib/server/routine';
-import { plannedFrom, plannedSets, plannedVolume, rotateFrom } from '$lib/volume';
+import { plannedFrom, plannedMovements, plannedSets, plannedVolume, rotateFrom } from '$lib/volume';
 import type { PageServerLoad } from './$types';
 import type { PageHeader } from '$lib/shell/page-header';
 
@@ -38,7 +38,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 				id: day.id,
 				key: day.key,
 				title: day.title,
-				exerciseCount: day.exercises.length,
+				// Both halves of a superset: two lifts to do, not one row to read.
+				exerciseCount: plannedMovements(planned),
 				sets: plannedSets(planned),
 				volume: plannedVolume(planned),
 				lastAt: last ? last.startedAt.getTime() : null,

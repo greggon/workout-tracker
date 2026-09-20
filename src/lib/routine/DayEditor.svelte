@@ -62,9 +62,28 @@
 	// svelte-ignore state_referenced_locally
 	let rows = $state<Row[]>(day.exercises.map(toRow));
 
-	/** Movement id per saved row, so the History link is a lookup, not a scan. */
+	/**
+	 * Movement ids per saved row, so a History link is a lookup, not a scan.
+	 *
+	 * Both halves, because both have a history. This held only the main
+	 * movement's id, which put one link on the row and pointed it at the first
+	 * lift — the paired half, which is a movement in its own right and logged as
+	 * one, had no way to reach its own history at all.
+	 */
 	// svelte-ignore state_referenced_locally
-	const movementIds = new Map(day.exercises.map((ex) => [ex.id, ex.main.movementId]));
+	const movementIds = new Map(
+		day.exercises.map((ex) => [
+			ex.id,
+			{ main: ex.main.movementId, pair: ex.pair?.movementId ?? null }
+		])
+	);
+
+	/** The movement whose history this half of a row points at, once it is saved. */
+	function historyId(row: Row, paired: boolean): string | null {
+		const ids = row.id ? movementIds.get(row.id) : null;
+		if (!ids) return null;
+		return paired ? ids.pair : ids.main;
+	}
 
 	/** The form field names the save action reads for each half of a row. */
 	function fieldNames(i: number, paired: boolean) {
@@ -115,7 +134,12 @@
 	the form field names differ. They were written out twice, sixty lines apart,
 	which is how a fix to one of them misses the other.
 -->
-{#snippet movementFields(movement: MovementFields, i: number, paired: boolean)}
+{#snippet movementFields(
+	movement: MovementFields,
+	i: number,
+	paired: boolean,
+	movementId: string | null
+)}
 	{@const names = fieldNames(i, paired)}
 	{@const load = loadingParts(movement.tool, movement.weight, loading)}
 	<div class="movement" class:paired>
@@ -153,10 +177,25 @@
 		<!-- The same block as the workout screen: the weight, what it cannot say
 		     about itself, then the drawing under both. -->
 		<div class="load">
-			<div class="load-text">
-				<div class="load-total num">{load.total}</div>
-				{#if load.note}
-					<div class="load-note num">{load.note}</div>
+			<div class="load-head">
+				<div class="load-text">
+					<div class="load-total num">{load.total}</div>
+					{#if load.note}
+						<div class="load-note num">{load.note}</div>
+					{/if}
+				</div>
+				{#if movementId}
+					<!-- Beside the movement it belongs to, so both halves of a superset
+					     have one. It is hidden on an unsaved row because there is no
+					     movement to have a history yet. -->
+					<a
+						class="btn btn-ghost history"
+						href="{resolve('/history/[id]', {
+							id: movementId
+						})}?back={encodeURIComponent(resolve('/routine'))}"
+					>
+						History
+					</a>
 				{/if}
 			</div>
 			<span class="art">
@@ -212,25 +251,15 @@
 						>
 					</div>
 					<span class="index num">{i + 1}</span>
-					{#if row.id && movementIds.has(row.id)}
-						<a
-							class="btn btn-ghost history"
-							href="{resolve('/history/[id]', {
-								id: movementIds.get(row.id)!
-							})}?back={encodeURIComponent(resolve('/routine'))}"
-						>
-							History
-						</a>
-					{/if}
 					<button type="button" class="btn btn-ghost remove" onclick={() => removeRow(i)}>
 						Remove
 					</button>
 				</div>
 
-				{@render movementFields(row.main, i, false)}
+				{@render movementFields(row.main, i, false, historyId(row, false))}
 
 				{#if row.pair}
-					{@render movementFields(row.pair, i, true)}
+					{@render movementFields(row.pair, i, true, historyId(row, true))}
 				{/if}
 
 				<div class="prescription">
@@ -358,7 +387,17 @@
 		font-size: 12px;
 		color: var(--color-neutral-400);
 	}
+	/* The workout screen's arrangement: the load on the left, its History link
+	   against the right edge of the same line. */
+	.load-head {
+		display: flex;
+		align-items: baseline;
+		gap: 12px;
+		min-width: 0;
+	}
 	.history {
+		flex: none;
+		margin-left: auto;
 		font-size: 12px;
 		text-decoration: none;
 	}

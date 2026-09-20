@@ -223,6 +223,52 @@ describe('what happens after a set is logged', () => {
 		expect(stepAfterLog(session, 0, refilled)).toEqual({ kind: 'open', index: 1 });
 	});
 
+	it('still moves on when the last set is a two-digit number', () => {
+		const session = fresh();
+		// Everything but the very last slot of the superset.
+		session.logSet(0, 0, 0, 10);
+		session.logSet(0, 0, 1, 10);
+		session.logSet(0, 1, 0, 10);
+
+		// Typing 12 arrives a digit at a time. The "1" finishes the exercise and
+		// arms the move…
+		const first = log(session, 0, 1, 1, 1);
+		expect(first).toBe(true);
+		expect(stepAfterLog(session, 0, first)).toEqual({ kind: 'open', index: 1 });
+
+		// …and the "2" is the rest of the same number, not a correction: without
+		// the waiting flag it cancelled the armed move and the screen never
+		// advanced, which every rep count of ten or more hit.
+		const second = log(session, 0, 1, 1, 12);
+		expect(second).toBe(false);
+		expect(stepAfterLog(session, 0, second)).toEqual({ kind: 'stay' });
+		expect(stepAfterLog(session, 0, second, true)).toEqual({ kind: 'open', index: 1 });
+	});
+
+	it('ends the day on a two-digit last rep of the last exercise', () => {
+		const session = fresh();
+		completeExercise(session, 0);
+		session.logSet(1, 0, 0, 12);
+		session.logSet(1, 1, 0, 12);
+
+		const first = log(session, 1, 2, 0, 1);
+		expect(stepAfterLog(session, 1, first)).toEqual({ kind: 'finish' });
+
+		const second = log(session, 1, 2, 0, 12);
+		expect(stepAfterLog(session, 1, second, true)).toEqual({ kind: 'finish' });
+	});
+
+	it('leaves a correction alone even when a move is waiting on another exercise', () => {
+		const session = fresh();
+		completeExercise(session, 0);
+
+		// The waiting flag is per exercise: a move armed by exercise 0 must not
+		// make a later touch of exercise 0 — after the move has been applied and
+		// forgotten — read as anything but a correction.
+		const completed = log(session, 0, 0, 0, 8);
+		expect(stepAfterLog(session, 0, completed, false)).toEqual({ kind: 'stay' });
+	});
+
 	it('never finishes the day twice over a correction', () => {
 		const session = fresh();
 		completeExercise(session, 0);

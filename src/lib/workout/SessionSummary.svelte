@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import type { SessionSummary } from '$lib/server/sessions';
-	import { formatMinutes, formatVolume, formatWeight } from '$lib/volume';
+	import { TOOL_SPEC } from '$lib/types';
+	import { formatVolume, formatWeight, isUnloaded, wholeMinutes } from '$lib/volume';
 
 	type Props = {
 		summary: SessionSummary;
@@ -26,15 +27,42 @@
 	);
 
 	/*
-	 * Three figures, one row. No notes under them: the volume's read "Up 320 lb
-	 * on last time", which is the headline printed directly above this, and the
-	 * other two were decoration that cost the row its width on a phone.
+	 * Three figures in three cards, the same anatomy as the home screen's month:
+	 * a colored cap, the number, the unit under it. Sets first — it is the one
+	 * figure that says what you actually did, and it is the only one that is
+	 * exactly right rather than derived from the weights you typed.
+	 *
+	 * The unit lives in the label rather than beside the number, so the number
+	 * gets the whole width of its card. "min" stays abbreviated because it has to
+	 * read the same under a 1 as under a 47.
 	 */
 	const stats = $derived([
-		{ label: 'Volume', value: `${formatVolume(summary.volume)} lb` },
-		{ label: 'Time', value: formatMinutes(summary.durationMins) },
-		{ label: 'Sets', value: String(summary.setCount) }
+		{ label: 'sets', value: String(summary.setCount) },
+		{ label: 'lb lifted', value: formatVolume(summary.volume) },
+		{ label: 'min', value: String(wholeMinutes(summary.durationMins)) }
 	]);
+
+	/*
+	 * Each movement's line, and the one figure it is worth ending on.
+	 *
+	 * A loaded movement ends on the weight it moved. An unloaded one — pull-ups,
+	 * dips — moved nothing the app can weigh, and printing "0 lb" against thirty
+	 * pull-ups reads as the app having failed to count them. So it ends on the
+	 * reps instead, and the line in front of it says what the load was rather
+	 * than repeating a rep count that has moved to the end.
+	 */
+	const movementRows = $derived(
+		summary.rows.map((row) => {
+			const unloaded = isUnloaded(row);
+			return {
+				...row,
+				detail: unloaded
+					? `${row.sets} sets · ${TOOL_SPEC[row.tool].label.toLowerCase()}`
+					: `${row.sets} × ${formatWeight(row.weight)} lb · ${row.reps} reps`,
+				total: unloaded ? `${row.reps} reps` : `${formatVolume(row.volume)} lb`
+			};
+		})
+	);
 
 	// --- volume chart -------------------------------------------------------
 	const W = 460;
@@ -77,10 +105,11 @@
 	{/if}
 
 	<ul class="stats">
-		{#each stats as stat (stat.label)}
-			<li>
-				<div class="stat-label">{stat.label}</div>
-				<div class="stat-value num">{stat.value}</div>
+		{#each stats as stat, i (stat.label)}
+			<li class="stat">
+				<span class="cap" data-cap={i}></span>
+				<span class="stat-value num">{stat.value}</span>
+				<span class="stat-label">{stat.label}</span>
 			</li>
 		{/each}
 	</ul>
@@ -115,18 +144,23 @@
 
 	<h6 class="section">Per movement</h6>
 	<ul class="rows card-list">
-		{#each summary.rows as row (row.movementId)}
+		{#each movementRows as row (row.movementId)}
 			<li class="row">
 				<span class="row-name">{row.name}</span>
-				<span class="row-detail num">
-					{row.sets} × {formatWeight(row.weight)} lb · {row.reps} reps
-				</span>
-				<span class="row-volume num">{formatVolume(row.volume)} lb</span>
+				<span class="row-detail num">{row.detail}</span>
+				<span class="row-volume num">{row.total}</span>
 			</li>
 		{/each}
 	</ul>
 
-	<a class="btn btn-primary back" href={resolve('/')}>Back to my days</a>
+	<div class="actions">
+		<a class="btn btn-secondary" href={resolve('/')}>Back to my days</a>
+		{#if summary.dayId}
+			<a class="btn btn-primary update" href={resolve('/routine/[id]', { id: summary.dayId })}>
+				Update routine
+			</a>
+		{/if}
+	</div>
 </section>
 
 <style>
@@ -148,7 +182,7 @@
 	/*
 	 * One rhythm down the page: 10px between a line of type and the card it
 	 * introduces, 30px between one section and the next. This line is the stats
-	 * card's heading in all but name, so it sits the same distance from its card
+	 * row's heading in all but name, so it sits the same distance from those cards
 	 * as "Volume · last 4 B days" does from the chart.
 	 */
 	.sub {
@@ -171,34 +205,57 @@
 		margin: 0;
 		padding: 0;
 	}
-	/* One card, three equal columns — three figures that are read together, so
-	   they sit together. Fixed columns rather than auto-fit: these never wrap to
-	   a second row, however narrow the phone. */
+	/* Three cards rather than three columns of one, so the summary's figures and
+	   the home screen's month are the same object read in two places. Flex with
+	   `flex: 1` keeps them equal without the tracks a grid would impose: each card
+	   is its own box, and a five-figure volume shrinks its own type rather than
+	   widening a column that the other two then have to match. */
 	.stats {
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: 10px;
+		display: flex;
+		gap: 8px;
 		margin-bottom: 30px;
-		padding: 14px 16px 15px;
-		border-radius: var(--radius-lg);
+	}
+	.stat {
+		flex: 1;
+		min-width: 0;
+		padding: 14px;
+		border-radius: var(--radius-md);
 		background: var(--color-surface);
 		box-shadow: var(--shadow-sm);
 	}
-	.stats > li {
-		min-width: 0;
+	/* A short colored cap above each figure, so three identical cards are still
+	   distinguishable at a glance. The home screen's colors, in its order. */
+	.cap {
+		display: block;
+		width: 18px;
+		height: 3px;
+		border-radius: var(--radius-pill);
+		margin-bottom: 9px;
+	}
+	.cap[data-cap='0'] {
+		background: var(--color-accent-500);
+	}
+	.cap[data-cap='1'] {
+		background: var(--color-accent-2-500);
+	}
+	.cap[data-cap='2'] {
+		background: var(--color-neutral-500);
+	}
+	/* The home screen's 21px, but allowed to shrink: this screen prints a real
+	   session's volume, which runs to five figures in a card a third of a phone
+	   wide, where the month's average does not. */
+	.stat-value {
+		display: block;
+		font-family: var(--font-heading);
+		font-size: clamp(17px, 5.4vw, 21px);
+		line-height: 1.2;
+		white-space: nowrap;
 	}
 	.stat-label {
-		font-size: 9.5px;
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
+		display: block;
+		font-size: 11.5px;
 		color: var(--color-neutral-500);
-	}
-	/* Sized to the column so a five-figure volume still fits beside the other
-	   two on the narrowest phone. */
-	.stat-value {
-		font-family: var(--font-heading);
-		font-size: clamp(17px, 6vw, 27px);
-		line-height: 1.15;
+		margin-top: 1px;
 	}
 
 	.section {
@@ -276,9 +333,27 @@
 		color: var(--color-accent-300);
 	}
 
-	.back {
+	/*
+	 * The two things worth doing having just finished: leave, or go and set next
+	 * week's targets while the session is still in your head. The accent is on
+	 * the routine, because leaving is what happens anyway. They wrap rather than
+	 * shrink, since "Update routine" is the longer label and truncating the way
+	 * out of the screen would be the wrong trade.
+	 */
+	.actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 10px;
 		margin-top: 26px;
+	}
+	.actions .btn {
 		text-decoration: none;
+	}
+	/* `margin-left: auto` rather than `justify-content: space-between`, so it is
+	   still pushed to the right edge on the narrow phone where the two wrap onto
+	   separate lines. */
+	.update {
+		margin-left: auto;
 	}
 
 	@media (max-width: 480px) {

@@ -229,9 +229,23 @@ export const ADVANCE_ON_COMMIT_MS = 200;
  * `completed` means this particular write is what finished the exercise — not
  * merely that the exercise is finished, which is also true of every correction
  * made afterwards.
+ *
+ * `waiting` says a move for this same exercise is already pending, which is the
+ * difference between a correction and the rest of a number. Typing 12 into the
+ * last empty slot finishes the exercise at "1" and then writes again with the
+ * "2": that second write did not complete anything, but a move is already
+ * waiting on it, so it is still the same set being entered. Without this a
+ * two-digit rep count on a final set cancelled its own advance and the screen
+ * sat there — every number under ten moved on, everything from ten up did not.
  */
-export function stepAfterLog(session: WorkoutSession, index: number, completed: boolean): NextStep {
-	if (!completed || !session.isExerciseDone(index)) return { kind: 'stay' };
+export function stepAfterLog(
+	session: WorkoutSession,
+	index: number,
+	completed: boolean,
+	waiting = false
+): NextStep {
+	if (!session.isExerciseDone(index)) return { kind: 'stay' };
+	if (!completed && !waiting) return { kind: 'stay' };
 	const next = session.nextUnfinished(index);
 	return next === null ? { kind: 'finish' } : { kind: 'open', index: next };
 }

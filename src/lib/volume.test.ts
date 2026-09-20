@@ -3,6 +3,8 @@ import {
 	formatMinutes,
 	formatVolume,
 	formatWeight,
+	isUnloaded,
+	plannedMovements,
 	plannedSets,
 	plannedVolume,
 	relativeDay,
@@ -38,6 +40,23 @@ describe('setVolume', () => {
 	});
 });
 
+describe('isUnloaded', () => {
+	it('is true for a bodyweight movement with nothing added', () => {
+		// Pull-ups move no iron, so their volume is a truthful zero — and "0 lb"
+		// is the wrong thing to print against thirty of them.
+		expect(isUnloaded({ tool: 'bodyweight', weight: 0 })).toBe(true);
+	});
+
+	it('is false once weight is hung off a belt', () => {
+		expect(isUnloaded({ tool: 'bodyweight', weight: 25 })).toBe(false);
+	});
+
+	it('is about the load, not the tool', () => {
+		expect(isUnloaded({ tool: 'barbell', weight: 95 })).toBe(false);
+		expect(isUnloaded({ tool: 'dumbbell', weight: 40 })).toBe(false);
+	});
+});
+
 describe('plannedVolume', () => {
 	// Day A's opening superset from the design: landmine row at 41 lb paired
 	// with an incline dumbbell press at 40, 2 sets of 10.
@@ -53,6 +72,17 @@ describe('plannedVolume', () => {
 	it('counts both halves of a superset', () => {
 		// (41 × 1 × 10 + 40 × 2 × 10) × 2 sets
 		expect(plannedVolume([superset])).toBe(2420);
+	});
+
+	it('counts a superset as two exercises', () => {
+		// One row in the routine, two lifts to do. Three paired exercises is a
+		// six-movement day, and the card saying "3 exercises" halves it.
+		expect(plannedMovements([superset])).toBe(2);
+		expect(plannedMovements([superset, superset, superset])).toBe(6);
+		expect(
+			plannedMovements([{ sets: 3, reps: 12, movements: [{ tool: 'barbell', weight: 95 }] }])
+		).toBe(1);
+		expect(plannedMovements([])).toBe(0);
 	});
 
 	it('sums across exercises', () => {

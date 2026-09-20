@@ -30,6 +30,19 @@ export function setVolume(movement: Loaded, reps: number): number {
 }
 
 /**
+ * True when a movement carries no external load — pull-ups, dips and sit-ups
+ * with nothing hung off you.
+ *
+ * Its volume is honestly zero, since volume is weight moved and there is no
+ * weight here the app knows about. But "0 lb" is a figure that says nothing
+ * about a set of pull-ups, so anywhere a total is printed, the reps are what
+ * such a movement has to show for itself instead.
+ */
+export function isUnloaded(movement: Loaded): boolean {
+	return movement.weight * toolMultiplier(movement.tool) === 0;
+}
+
+/**
  * What a day is worth if every prescribed rep is completed. Both halves of a
  * superset count — the design's card meta reads "N exercises · N sets · N lb
  * planned", and the pair is real work.
@@ -60,6 +73,18 @@ export function plannedFrom(
 /** Total prescribed sets, counting an exercise once however many movements it pairs. */
 export function plannedSets(exercises: PlannedExercise[]): number {
 	return exercises.reduce((total, ex) => total + ex.sets, 0);
+}
+
+/**
+ * Movements in a day, counting both halves of a superset.
+ *
+ * A superset is one row in the routine but two lifts to do, and the count on a
+ * day card is there to answer "how much is this day": three paired exercises is
+ * six things to perform, and reading "3 exercises" undersells the day by half.
+ * The row count is an implementation detail of how the routine is stored.
+ */
+export function plannedMovements(exercises: PlannedExercise[]): number {
+	return exercises.reduce((total, ex) => total + ex.movements.length, 0);
 }
 
 /** Every logging slot in a day: sets × movements. Drives the progress bar. */
@@ -101,7 +126,16 @@ export function relativeDay(when: Date | number, now: Date | number = Date.now()
 	return `${days} days ago`;
 }
 
+/**
+ * Whole minutes, never zero — a workout that was logged took some time, and
+ * "0 min" reads as a bug. Split out from `formatMinutes` so a tile that prints
+ * its unit separately still rounds by the same rule.
+ */
+export function wholeMinutes(mins: number): number {
+	return Math.max(1, Math.round(mins));
+}
+
 /** Whole minutes, for "52 min" style session lengths. */
 export function formatMinutes(mins: number): string {
-	return `${Math.max(1, Math.round(mins))} min`;
+	return `${wholeMinutes(mins)} min`;
 }

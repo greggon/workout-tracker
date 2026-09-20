@@ -20,7 +20,7 @@
 	import { useOffline } from '$lib/offline/context.svelte';
 	import { clearLive, loadLive, saveLive } from '$lib/offline/live';
 	import { useChrome } from '$lib/shell/chrome.svelte';
-	import { setVolume, formatVolume, formatMinutes } from '$lib/volume';
+	import { setVolume, formatVolume, wholeMinutes } from '$lib/volume';
 
 	type LastLog = { weight: number; reps: number; loggedAt: Date };
 
@@ -320,9 +320,14 @@
 	function afterLog(index: number, { completed, source }: Logged) {
 		// Still training, so the pending discard was not meant.
 		disarmQuit();
+		// A move already waiting on this exercise means it was finished a keystroke
+		// ago, so this write is the rest of that number rather than a correction to
+		// a done exercise. Read before cancelling, and the wait starts again from
+		// the digit that just landed.
+		const waiting = pending?.index === index;
 		cancelAdvance();
 
-		const step = stepAfterLog(session, index, completed);
+		const step = stepAfterLog(session, index, completed, waiting);
 		if (step.kind === 'stay') return;
 		schedule(index, step, ADVANCE_DELAY_MS[source]);
 	}
@@ -379,11 +384,15 @@
 			<ul class="stats">
 				<li>
 					<div class="stat-label">Volume</div>
-					<div class="stat-value num">{formatVolume(loggedVolume)} lb</div>
+					<div class="stat-value num">
+						{formatVolume(loggedVolume)}<span class="stat-unit">lb</span>
+					</div>
 				</li>
 				<li>
 					<div class="stat-label">Time</div>
-					<div class="stat-value num">{formatMinutes(session.durationMins)}</div>
+					<div class="stat-value num">
+						{wholeMinutes(session.durationMins)}<span class="stat-unit">min</span>
+					</div>
 				</li>
 				<li>
 					<div class="stat-label">Sets</div>
@@ -595,9 +604,17 @@
 		text-transform: uppercase;
 		color: var(--color-neutral-500);
 	}
+	/* Matches the summary card this screen hands over to — a figure and its unit
+	   are one word, and the unit is small enough to cost the column nothing. */
 	.stat-value {
 		font-family: var(--font-heading);
 		font-size: clamp(17px, 6vw, 27px);
 		line-height: 1.15;
+		white-space: nowrap;
+	}
+	.stat-unit {
+		font-size: 0.55em;
+		margin-left: 0.12em;
+		color: var(--color-neutral-500);
 	}
 </style>

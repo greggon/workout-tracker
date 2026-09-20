@@ -201,6 +201,16 @@ describe('summarizeSession', () => {
 		expect(summary.volume).toBeGreaterThan(summary.previousVolume!);
 	});
 
+	// The summary screen offers "Update routine", which needs the day to link to.
+	it('carries the routine day id, and null once that day is gone', () => {
+		const input = payload();
+		saveSession(db, userId, input);
+		expect(summarizeSession(db, userId, input.id).dayId).toBe(dayId);
+
+		db.delete(days).where(eq(days.id, dayId)).run();
+		expect(summarizeSession(db, userId, input.id).dayId).toBeNull();
+	});
+
 	it('refuses to summarize another account’s session', () => {
 		const input = payload();
 		saveSession(db, userId, input);

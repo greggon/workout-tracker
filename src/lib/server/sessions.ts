@@ -137,6 +137,13 @@ export type HistoryPoint = {
 
 export type SessionSummary = {
 	id: string;
+	/**
+	 * The routine day this session came from, or null when that day has since
+	 * been deleted — the column is `on delete set null`, because `dayKey` and
+	 * `dayTitle` are snapshots that keep history readable without it. Anything
+	 * that links back to the routine has to handle the null.
+	 */
+	dayId: string | null;
 	dayKey: DayKey;
 	dayTitle: string;
 	startedAt: number;
@@ -222,6 +229,7 @@ export function summarizeSession(db: Db, userId: string, sessionId: string): Ses
 
 	return {
 		id: session.id,
+		dayId: session.dayId,
 		dayKey: session.dayKey,
 		dayTitle: session.dayTitle,
 		startedAt: session.startedAt.getTime(),
