@@ -2,6 +2,7 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import DumbbellIcon from './DumbbellIcon.svelte';
+	import NavIcon from './NavIcon.svelte';
 	import { destinations } from './nav';
 
 	/**
@@ -10,14 +11,16 @@
 	 *
 	 * Hidden during a workout: the screen is a single task with its own finish
 	 * button, and a bar offering to navigate away mid-set is an invitation to
-	 * lose your place. Hidden again above 900px, where SideRail takes over — the
-	 * two read the same destination list.
+	 * lose your place. Hidden in the day editor for the same reason — it is a
+	 * form with its own back link and a pinned Save bar where this would sit.
+	 * Hidden again above 900px, where SideRail takes over — the two read the
+	 * same destination list.
 	 */
 	type Props = { nextDayId: string | null };
 	let { nextDayId }: Props = $props();
 
 	const path = $derived(page.url.pathname);
-	const hidden = $derived(path.startsWith('/workout/'));
+	const hidden = $derived(path.startsWith('/workout/') || /^\/routine\/[^/]+/.test(path));
 
 	const tabs = destinations();
 
@@ -31,10 +34,22 @@
 			{#each left as tab (tab.href)}
 				<!-- nav.ts resolves these once; resolve() here would be resolving an
 				     already-resolved path. -->
-				<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-				<a class="tab" class:on={tab.match(path)} href={tab.href}>{tab.label}</a>
+				<!-- eslint-disable svelte/no-navigation-without-resolve -->
+				<a
+					class="tab"
+					class:on={tab.match(path)}
+					href={tab.href}
+					aria-current={tab.match(path) ? 'page' : undefined}
+				>
+					<NavIcon name={tab.icon} size={20} />
+					<span>{tab.label}</span>
+				</a>
+				<!-- eslint-enable svelte/no-navigation-without-resolve -->
 			{/each}
 
+			<!-- Always drawn. With no day to start, an empty slot in the middle of
+			     the bar read as something failing to load; setting up the routine
+			     is the thing to do next instead. -->
 			<div class="fab-slot">
 				{#if nextDayId}
 					<a
@@ -45,14 +60,32 @@
 					>
 						<DumbbellIcon size={28} />
 					</a>
+				{:else}
+					<a
+						class="fab"
+						href={resolve('/routine')}
+						title="Set up your routine"
+						aria-label="Set up your routine"
+					>
+						<DumbbellIcon size={28} />
+					</a>
 				{/if}
 			</div>
 
 			{#each right as tab (tab.href)}
 				<!-- nav.ts resolves these once; resolve() here would be resolving an
 				     already-resolved path. -->
-				<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-				<a class="tab" class:on={tab.match(path)} href={tab.href}>{tab.label}</a>
+				<!-- eslint-disable svelte/no-navigation-without-resolve -->
+				<a
+					class="tab"
+					class:on={tab.match(path)}
+					href={tab.href}
+					aria-current={tab.match(path) ? 'page' : undefined}
+				>
+					<NavIcon name={tab.icon} size={20} />
+					<span>{tab.label}</span>
+				</a>
+				<!-- eslint-enable svelte/no-navigation-without-resolve -->
 			{/each}
 		</div>
 	</nav>
@@ -78,37 +111,47 @@
 		box-shadow: var(--shadow-md);
 		display: flex;
 		align-items: center;
-		padding: 8px 10px;
+		padding: 6px 8px;
 		pointer-events: auto;
 	}
 
+	/* The rail's glyphs over the label, so the phone and desktop navigations
+	   read as one. 52px tall: a label alone came out near 30px, well under the
+	   44px everything else here is held to. */
 	.tab {
 		flex: 1;
-		text-align: center;
-		padding: 7px 2px 6px;
-		border-radius: var(--radius-md);
-		font-size: 10.5px;
-		letter-spacing: 0.01em;
+		min-width: 0;
+		min-height: 52px;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 3px;
+		padding: 4px 2px;
+		border-radius: 18px;
+		font-size: var(--text-xs);
+		font-weight: 500;
+		line-height: 1.1;
 		color: var(--color-neutral-500);
 		text-decoration: none;
 	}
 	.tab.on {
 		color: var(--color-accent);
-		background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+		background: color-mix(in srgb, var(--color-accent) 14%, transparent);
 	}
 
 	.fab-slot {
 		flex: none;
-		width: 76px;
+		width: 72px;
 		display: flex;
 		justify-content: center;
 	}
 	.fab {
 		display: grid;
 		place-items: center;
-		width: 54px;
-		height: 54px;
-		margin-top: -22px;
+		width: 56px;
+		height: 56px;
+		margin-top: -24px;
 		border-radius: var(--radius-pill);
 		background: linear-gradient(160deg, var(--color-section-glow), var(--color-section) 62%);
 		color: var(--on-section);

@@ -4,6 +4,7 @@ import { getDb } from '$lib/server/db';
 import { days, movements } from '$lib/server/db/schema';
 import { listDays } from '$lib/server/routine';
 import { saveDay, type ExerciseInput } from '$lib/server/routine-edit';
+import type { PageHeader } from '$lib/shell/page-header';
 import { TOOLS, type Tool } from '$lib/types';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -20,6 +21,14 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		.all();
 
 	return {
+		// Every route supplies one. Without it the header block rendered empty —
+		// no title and no back link, so the only way out was Cancel at the foot
+		// of a long form.
+		header: {
+			kicker: 'Edit day',
+			title: `${day.key} day`,
+			back: '/routine'
+		} satisfies PageHeader,
 		day,
 		catalog,
 		loading: {

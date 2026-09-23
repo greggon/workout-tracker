@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { enhance } from '$app/forms';
-	import { beforeNavigate, goto } from '$app/navigation';
+	import UnsavedDialog from '$lib/ui/UnsavedDialog.svelte';
+	import { UnsavedGuard } from '$lib/ui/unsaved.svelte';
 	import {
 		describeStock,
 		equipmentChanged,
@@ -119,45 +120,17 @@
 	}
 
 	/**
-	 * Unsaved edits are only ever mentioned on the way out.
-	 *
-	 * Setting up a rack is a long sitting — several plates, their counts and
-	 * their colors — and something on screen telling you to save the whole time
-	 * is noise you learn to look past. Leaving the page is the one moment the
-	 * edits are actually about to be lost, so that is the only moment this says
-	 * anything.
+	 * Unsaved edits are only ever mentioned on the way out. Setting up a rack is
+	 * a long sitting — several plates, their counts and their colors — so the
+	 * guard, not a standing banner, is what speaks up.
 	 */
-	let leavingTo = $state<URL | null>(null);
+	const guard = new UnsavedGuard(() => dirty, '/gear');
 	let saveThenLeave = false;
 	let equipmentForm: HTMLFormElement;
 
-	beforeNavigate((nav) => {
-		if (!dirty) return;
-		// Staying on this page — a save, or a link back to it.
-		if (nav.to?.route.id === '/gear') return;
-
-		if (nav.type === 'leave') {
-			// Closing the tab or reloading: the browser owns this dialog, and
-			// cancelling is what asks it to put one up.
-			nav.cancel();
-			return;
-		}
-
-		nav.cancel();
-		leavingTo = nav.to?.url ?? null;
-	});
-
-	function keepEditing() {
-		leavingTo = null;
-	}
-
 	async function discardAndLeave() {
-		const to = leavingTo;
-		leavingTo = null;
 		discard();
-		// Already-resolved, as above.
-		// eslint-disable-next-line svelte/no-navigation-without-resolve
-		if (to) await goto(to);
+		await guard.go();
 	}
 
 	/** Saves through the enhanced submit, then carries on to wherever you were
@@ -180,9 +153,9 @@
 </p>
 
 {#if form?.message}
-	<p class="notice error" role="alert">{form.message}</p>
+	<p class="notice notice-error" role="alert">{form.message}</p>
 {:else if form?.saved}
-	<p class="notice ok" role="status">Saved.</p>
+	<p class="notice" role="status">Saved.</p>
 {/if}
 
 <form
@@ -196,12 +169,7 @@
 			await update();
 			if (!saveThenLeave) return;
 			saveThenLeave = false;
-			const to = leavingTo;
-			leavingTo = null;
-			// The destination came from SvelteKit's own navigation event, so it is
-			// already a resolved URL; resolve() would be resolving a resolved path.
-			// eslint-disable-next-line svelte/no-navigation-without-resolve
-			if (to) await goto(to);
+			await guard.go();
 		}}
 >
 	<div class="panel">
@@ -234,7 +202,7 @@
 	</div>
 
 	<div class="section-head">
-		<h6 class="label">Plates you own</h6>
+		<h2 class="section-label">Plates you own</h2>
 		<button type="button" class="btn btn-secondary toggle" onclick={toggleColors}>
 			{showColors ? 'Hide colors' : 'Show colors'}
 		</button>
@@ -297,8 +265,28 @@
 					-->
 						<input type="hidden" name="color-{i}" value={row.color} />
 					{/if}
-					<button type="button" class="btn btn-secondary drop" onclick={() => removeRow(i)}>
-						Remove
+					<button
+						type="button"
+						class="btn btn-icon btn-danger-quiet drop"
+						onclick={() => removeRow(i)}
+						aria-label="Remove the {row.weight} lb plates"
+						title="Remove"
+					>
+						<svg
+							width="18"
+							height="18"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.9"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<path
+								d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"
+							/>
+						</svg>
 					</button>
 				</li>
 			{/each}
@@ -309,17 +297,17 @@
 
 	<p class="text-muted hint">Reads as: {describeStock(rows)}</p>
 	{#if perSide.length === 0 && usable}
-		<p class="notice error">
+		<p class="notice notice-error">
 			You own fewer than two of every plate, so none can go on a bar evenly.
 		</p>
 	{/if}
 
-	<div class="save-row">
-		<button class="btn btn-primary" type="submit" disabled={!usable}>Save equipment</button>
-	</div>
+	<button class="btn btn-primary btn-block save" type="submit" disabled={!usable}>
+		Save equipment
+	</button>
 </form>
 
-<h6 class="label">Try a weight</h6>
+<h2 class="section-label">Try a weight</h2>
 <div class="panel">
 	<div class="row fill">
 		<label class="field">
@@ -344,23 +332,16 @@
 	</div>
 </div>
 
-{#if leavingTo}
-	<!-- Only ever on the way out; see beforeNavigate above. -->
-	<div class="dialog-backdrop">
-		<div class="dialog" role="dialog" aria-modal="true" aria-labelledby="unsaved-title">
-			<h3 class="dialog-title" id="unsaved-title">Equipment not saved</h3>
-			<p class="text-muted dialog-text">
-				You have changed your equipment and not saved it. Leaving now throws the changes away.
-			</p>
-			<div class="dialog-actions">
-				<button type="button" class="btn btn-ghost" onclick={keepEditing}>Keep editing</button>
-				<button type="button" class="btn btn-secondary" onclick={discardAndLeave}>Discard</button>
-				<button type="button" class="btn btn-primary" onclick={saveAndLeave} disabled={!usable}>
-					Save and go
-				</button>
-			</div>
-		</div>
-	</div>
+{#if guard.leavingTo}
+	<!-- Only ever on the way out; see UnsavedGuard. -->
+	<UnsavedDialog
+		title="Equipment not saved"
+		text="You have changed your equipment and not saved it. Leaving now throws the changes away."
+		onstay={() => guard.stay()}
+		ondiscard={discardAndLeave}
+		onsave={saveAndLeave}
+		saveDisabled={!usable}
+	/>
 {/if}
 
 {#if usable}
@@ -382,25 +363,6 @@
 	.sub {
 		max-width: 46ch;
 		margin: 0 0 20px;
-		font-size: 15px;
-	}
-	.label {
-		color: var(--color-neutral-500);
-		margin: 30px 0 8px;
-	}
-
-	.notice {
-		border-radius: var(--radius-md);
-		padding: var(--space-3) var(--space-4);
-		font-size: 13.5px;
-	}
-	.error {
-		color: var(--color-accent-300);
-		background: var(--color-accent-900);
-	}
-	.ok {
-		color: var(--color-neutral-300);
-		background: var(--color-neutral-900);
 	}
 
 	/*
@@ -438,14 +400,8 @@
 		flex: 1 1 200px;
 		min-width: 0;
 	}
-	.field > span {
-		display: block;
-		font-size: 11px;
-		margin-bottom: 4px;
-		color: var(--color-neutral-500);
-	}
 	.hint {
-		font-size: 12px;
+		font-size: var(--text-sm);
 		margin: 0 0 12px;
 	}
 
@@ -473,8 +429,8 @@
 		--plate-cols: 1fr 1fr var(--swatch-w) var(--remove-w);
 		/* Sized by the COLOR heading; the swatch fits whatever it is given. */
 		--swatch-w: 58px;
-		/* Sized by the Remove button: a bordered pill, tight padding, 12px text. */
-		--remove-w: 74px;
+		/* Sized by the Remove button: one icon button, 44px on touch. */
+		--remove-w: 44px;
 	}
 	.plates.no-colors {
 		--plate-cols: 1fr 1fr var(--remove-w);
@@ -484,7 +440,6 @@
 	@media (max-width: 360px) {
 		.plates {
 			--swatch-w: 46px;
-			--remove-w: 64px;
 		}
 	}
 	.plates-head,
@@ -503,10 +458,12 @@
 		min-width: 0;
 	}
 	.plates-head {
-		font-size: 10.5px;
+		font-size: var(--text-xs);
+		font-weight: 500;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
-		color: var(--color-neutral-600);
+		/* Not neutral-600: under AA for text on a card. */
+		color: var(--color-neutral-500);
 	}
 	/*
 	 * A heading labels the value, not the box around it. An .input puts a 1px
@@ -564,46 +521,38 @@
 		}
 	}
 
+	/* The heading shares its row with the colors toggle, so the row carries the
+	   section spacing and the heading inside it drops its own. */
 	.section-head {
 		display: flex;
-		align-items: baseline;
+		align-items: center;
 		gap: 10px;
+		margin: 28px 0 10px;
 	}
-	.section-head .label {
+	.section-head .section-label {
 		flex: 1;
 		min-width: 0;
+		margin: 0;
 	}
 	.toggle {
 		flex: none;
-		font-size: 12px;
+		font-size: var(--text-md);
 	}
-	/* The same bordered pill as "Add a plate" and every other button on the page.
-	   It fills its fixed track rather than sizing it, which is what keeps the
-	   heading row and the plate rows on the same columns, and takes a height so
-	   it lines up with the inputs beside it on a pointer as well as on touch. */
+	/* Fills its fixed track, which is what keeps the heading row and the plate
+	   rows on the same columns. */
 	.drop {
-		font-size: 12px;
-		height: 40px;
-		padding-inline: 4px;
+		width: 100%;
 		justify-self: stretch;
 	}
-	/* The one button that writes anything, at the end of the form the way a
-	   dialog puts its confirm on the right. */
-	.save-row {
-		display: flex;
-		align-items: center;
-		justify-content: flex-end;
-		gap: 10px;
+	/* The one button that writes anything: full width at the end of the form,
+	   the way every phone form here ends. */
+	.save {
 		margin-top: 12px;
 	}
 	.add {
 		margin-top: 10px;
 		width: 100%;
-	}
-
-	.dialog-text {
-		font-size: 13.5px;
-		margin: 0;
+		font-size: var(--text-md);
 	}
 
 	.preview {
@@ -618,11 +567,11 @@
 	.load-total {
 		font-family: var(--font-heading);
 		font-weight: var(--font-heading-weight);
-		font-size: 13.5px;
+		font-size: var(--text-md);
 		color: var(--color-text);
 	}
 	.load-note {
-		font-size: 11.5px;
+		font-size: var(--text-sm);
 		color: var(--color-neutral-500);
 		margin-top: -3px;
 	}

@@ -2,6 +2,9 @@
 	import { resolve } from '$app/paths';
 	import { loadingParts, type LoadingConfig } from '$lib/plates';
 	import PlateDiagram from '$lib/workout/PlateDiagram.svelte';
+	import ReorderButtons from '$lib/ui/ReorderButtons.svelte';
+	import UnsavedDialog from '$lib/ui/UnsavedDialog.svelte';
+	import { UnsavedGuard } from '$lib/ui/unsaved.svelte';
 	import { TOOLS, TOOL_LABELS, type Tool } from '$lib/types';
 
 	type Movement = { movementId: string; name: string; tool: Tool; weight: number };
@@ -15,7 +18,7 @@
 	};
 
 	type Props = {
-		day: { key: string; title: string; exercises: Exercise[] };
+		day: { title: string; exercises: Exercise[] };
 		catalog: { name: string; defaultTool: Tool }[];
 		loading: LoadingConfig;
 		form: { message?: string } | null;
@@ -127,6 +130,21 @@
 		const row = rows[i];
 		row.pair = row.pair ? null : { name: '', tool: row.main.tool, weight: row.main.weight };
 	}
+
+	/**
+	 * Unsaved edits, compared against what was loaded. The editing state is
+	 * plain data, so a serialized snapshot is an exact "has anything changed".
+	 */
+	// svelte-ignore state_referenced_locally
+	const loaded = JSON.stringify({ title, rows });
+	const dirty = $derived(JSON.stringify({ title, rows }) !== loaded);
+
+	/*
+	 * The save is a native form POST, which leaves the page — so the submit and
+	 * an explicit Cancel both let navigation through rather than asking.
+	 */
+	const guard = new UnsavedGuard(() => dirty, '/routine/[id]');
+	let editForm: HTMLFormElement;
 </script>
 
 <!--
@@ -143,8 +161,8 @@
 	{@const names = fieldNames(i, paired)}
 	{@const load = loadingParts(movement.tool, movement.weight, loading)}
 	<div class="movement" class:paired>
-		<label class="field">
-			<span>{paired ? 'Paired with' : 'Movement'}</span>
+		<label class="field name">
+			<span>{paired ? 'Superset with' : 'Movement'}</span>
 			<input
 				class="input"
 				name={names.name}
@@ -153,7 +171,7 @@
 				placeholder={paired ? 'Second movement' : 'Movement name'}
 			/>
 		</label>
-		<label class="field tool">
+		<label class="field">
 			<span>Tool</span>
 			<select class="input" name={names.tool} bind:value={movement.tool}>
 				{#each TOOLS as tool (tool)}
@@ -161,7 +179,7 @@
 				{/each}
 			</select>
 		</label>
-		<label class="field short">
+		<label class="field">
 			<span>Weight</span>
 			<input
 				class="input num"
@@ -211,20 +229,23 @@
 	{/each}
 </datalist>
 
-<form method="POST" action="?/save">
-	<div class="head">
-		<span class="badge">{day.key}</span>
-		<input class="input title" name="title" bind:value={title} aria-label="Day title" />
-	</div>
-
+<form method="POST" action="?/save" bind:this={editForm} onsubmit={() => guard.pass()}>
 	{#if form?.message}
-		<p class="error" role="alert">{form.message}</p>
+		<p class="notice notice-error" role="alert">{form.message}</p>
 	{/if}
 
+	<!-- The day's letter is the page title now; this is only its name. -->
+	<label class="field">
+		<span>Day name</span>
+		<input class="input title" name="title" bind:value={title} />
+	</label>
+
 	<p class="text-muted hint">
-		Give a movement a pair to make it a superset — both halves are logged and both count toward
-		volume. Clearing a movement's name removes it when you save.
+		Pair a movement to make it a superset — both halves are logged and both count toward volume.
+		Clear a movement's name to remove it when you save.
 	</p>
+
+	<h2 class="section-label">Exercises</h2>
 
 	<input type="hidden" name="count" value={rows.length} />
 
@@ -234,25 +255,35 @@
 				<input type="hidden" name="id-{i}" value={row.id ?? ''} />
 
 				<div class="row-head">
-					<div class="arrows">
-						<button
-							type="button"
-							class="btn btn-secondary btn-icon arrow"
-							onclick={() => move(i, -1)}
-							disabled={i === 0}
-							aria-label="Move up">↑</button
+					<span class="badge badge-quiet num">{i + 1}</span>
+					<ReorderButtons
+						name="exercise {i + 1}"
+						first={i === 0}
+						last={i === rows.length - 1}
+						onmove={(delta) => move(i, delta)}
+					/>
+					<button
+						type="button"
+						class="btn btn-icon btn-danger-quiet remove"
+						onclick={() => removeRow(i)}
+						aria-label="Remove exercise {i + 1}"
+						title="Remove"
+					>
+						<svg
+							width="18"
+							height="18"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.9"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
 						>
-						<button
-							type="button"
-							class="btn btn-secondary btn-icon arrow"
-							onclick={() => move(i, 1)}
-							disabled={i === rows.length - 1}
-							aria-label="Move down">↓</button
-						>
-					</div>
-					<span class="index num">{i + 1}</span>
-					<button type="button" class="btn btn-ghost remove" onclick={() => removeRow(i)}>
-						Remove
+							<path
+								d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"
+							/>
+						</svg>
 					</button>
 				</div>
 
@@ -263,7 +294,7 @@
 				{/if}
 
 				<div class="prescription">
-					<label class="field short">
+					<label class="field">
 						<span>Sets</span>
 						<input
 							class="input num"
@@ -274,7 +305,7 @@
 							bind:value={row.sets}
 						/>
 					</label>
-					<label class="field short">
+					<label class="field">
 						<span>Reps</span>
 						<input
 							class="input num"
@@ -285,7 +316,7 @@
 							bind:value={row.reps}
 						/>
 					</label>
-					<label class="field">
+					<label class="field note">
 						<span>Note</span>
 						<input
 							class="input"
@@ -295,7 +326,7 @@
 						/>
 					</label>
 					<button type="button" class="btn btn-secondary pair-toggle" onclick={() => togglePair(i)}>
-						{row.pair ? 'Unpair' : 'Pair'}
+						{row.pair ? 'Remove superset' : 'Make a superset'}
 					</button>
 				</div>
 			</li>
@@ -304,47 +335,35 @@
 
 	<button type="button" class="btn btn-secondary btn-block" onclick={addRow}>Add exercise</button>
 
+	<!-- Pinned to the bottom of the screen while the form is on it: the save
+	     used to sit below the last exercise, a screen or two of scrolling
+	     away from whatever you had just changed. -->
 	<div class="actions">
-		<button class="btn btn-primary" type="submit">Save day</button>
-		<a class="btn btn-secondary" href={resolve('/routine')}>Cancel</a>
+		<a class="btn btn-secondary" href={resolve('/routine')} onclick={() => guard.pass()}>Cancel</a>
+		<button class="btn btn-primary save" type="submit">Save day</button>
 	</div>
 </form>
 
+{#if guard.leavingTo}
+	<UnsavedDialog
+		title="Day not saved"
+		text="You have changed this day and not saved it. Leaving now throws the changes away."
+		onstay={() => guard.stay()}
+		ondiscard={() => guard.go()}
+		onsave={() => editForm.requestSubmit()}
+		saveLabel="Save day"
+	/>
+{/if}
+
 <style>
-	.head {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-		padding-top: 22px;
-		margin-bottom: 12px;
-	}
-	.badge {
-		flex: none;
-		width: 38px;
-		height: 38px;
-		border-radius: var(--radius-md);
-		display: grid;
-		place-items: center;
-		font-family: var(--font-heading);
-		font-size: 16px;
-		color: var(--color-accent-200);
-		background: var(--color-accent-800);
-	}
 	.title {
 		font-family: var(--font-heading);
 		font-weight: var(--font-heading-weight);
-		font-size: 20px;
+		font-size: var(--text-lg);
 	}
 	.hint {
-		font-size: 12.5px;
-		margin: 0 0 18px;
-	}
-	.error {
-		color: var(--color-accent-300);
-		background: var(--color-accent-900);
-		border-radius: var(--radius-md);
-		padding: var(--space-3) var(--space-4);
-		font-size: 13.5px;
+		font-size: var(--text-sm);
+		margin: 10px 0 0;
 	}
 
 	.rows {
@@ -356,37 +375,22 @@
 	}
 	.row {
 		background: var(--color-surface);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-lg);
 		box-shadow: var(--shadow-sm);
-		padding: 12px 14px;
+		padding: 12px 16px 16px;
 		display: grid;
-		gap: 10px;
+		gap: 12px;
 	}
 
 	.row-head {
 		display: flex;
 		align-items: center;
-		gap: 10px;
+		gap: 6px;
 	}
-	.arrows {
-		display: flex;
-		gap: 4px;
-	}
-	.arrow {
-		width: 30px;
-		height: 26px;
-		min-height: 0;
-		font-size: 13px;
-	}
-	.index {
-		font-size: 12px;
-		color: var(--color-neutral-500);
+	.row-head .badge {
 		margin-right: auto;
 	}
-	.remove {
-		font-size: 12px;
-		color: var(--color-neutral-400);
-	}
+
 	/* The workout screen's arrangement: the load on the left, its History link
 	   against the right edge of the same line. */
 	.load-head {
@@ -398,24 +402,42 @@
 	.history {
 		flex: none;
 		margin-left: auto;
-		font-size: 12px;
+		font-size: var(--text-md);
 		text-decoration: none;
 	}
 
+	/*
+	 * Fixed columns, not wrapping flex. Flex-basis 150/130/84 let the content
+	 * decide the rows: Weight alone on a line at 390px, and at 360px the
+	 * indented pair dropped its Tool while the main movement kept it, so the two
+	 * halves of a superset stopped lining up. The name gets a line to itself;
+	 * everything else pairs up.
+	 */
 	.movement,
 	.prescription {
-		display: flex;
-		flex-wrap: wrap;
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: 8px;
-		align-items: flex-end;
+		align-items: end;
 	}
+	.name,
+	.note,
+	.load,
+	.pair-toggle {
+		grid-column: 1 / -1;
+	}
+	/* Its own tinted block rather than a left rule: it is the second half of
+	   the exercise, and the tint keeps it inside the card's columns. */
 	.paired {
-		padding-left: 14px;
-		border-left: 2px solid var(--color-accent-700);
+		padding: 12px;
+		border-radius: var(--radius-md);
+		background: color-mix(in srgb, var(--color-bg) 55%, var(--color-surface));
+	}
+	.paired .name > span {
+		color: var(--color-accent);
 	}
 
 	.load {
-		flex: 1 1 100%;
 		display: grid;
 		gap: 6px;
 		min-width: 0;
@@ -432,42 +454,67 @@
 	.load-total {
 		font-family: var(--font-heading);
 		font-weight: var(--font-heading-weight);
-		font-size: 13.5px;
+		font-size: var(--text-md);
 		color: var(--color-text);
 	}
 	.load-note {
-		font-size: 11.5px;
+		font-size: var(--text-sm);
 		color: var(--color-neutral-500);
 		margin-top: 1px;
 	}
 
 	.field {
-		flex: 1 1 150px;
 		min-width: 0;
 	}
-	.field > span {
-		display: block;
-		font-size: 11px;
-		margin-bottom: 4px;
-		color: var(--color-neutral-500);
-	}
-	.short {
-		flex: 0 0 84px;
-	}
-	.tool {
-		flex: 0 0 130px;
-	}
 	.pair-toggle {
-		flex: none;
-		font-size: 12.5px;
+		font-size: var(--text-md);
 	}
 
 	.actions {
+		position: sticky;
+		bottom: 0;
+		z-index: 20;
 		display: flex;
 		gap: 10px;
-		margin-top: 22px;
+		margin: 22px calc(-1 * var(--gutter)) 0;
+		padding: 12px var(--gutter) calc(12px + env(safe-area-inset-bottom));
+		background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+		backdrop-filter: blur(12px);
+		box-shadow: 0 -1px 0 var(--color-divider);
 	}
 	.actions .btn {
+		flex: 1;
+		min-height: 48px;
 		text-decoration: none;
+	}
+	.actions .save {
+		flex: 2;
+	}
+
+	/* A window is wide enough for a movement's three fields on one line. */
+	@media (min-width: 900px) and (pointer: fine) {
+		.movement {
+			grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+		}
+		.prescription {
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr) auto;
+		}
+		.name,
+		.note,
+		.pair-toggle {
+			grid-column: auto;
+		}
+		.actions {
+			position: static;
+			margin-inline: 0;
+			padding: 0;
+			background: none;
+			backdrop-filter: none;
+			box-shadow: none;
+		}
+		.actions .btn {
+			flex: none;
+			min-width: 140px;
+		}
 	}
 </style>

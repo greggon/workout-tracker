@@ -36,7 +36,7 @@
 		<a class="btn btn-primary btn-block" href={resolve('/routine')}>Set up my routine</a>
 	</div>
 {:else}
-	<h2 class="label section section-top">This month</h2>
+	<h2 class="section-label">This month</h2>
 	<ul class="stats">
 		{#each stats as stat, i (stat.label)}
 			<li class="stat">
@@ -47,7 +47,7 @@
 		{/each}
 	</ul>
 
-	<h2 class="label section section-lead">Up next</h2>
+	<h2 class="section-label section-lead">Up next</h2>
 	<section class="hero card">
 		<div class="hero-head">
 			<span class="badge">{upNext.key}</span>
@@ -78,7 +78,7 @@
 	</section>
 
 	{#if later.length}
-		<h2 class="label section">Then in rotation</h2>
+		<h2 class="section-label">Then in rotation</h2>
 		<ul class="rotation">
 			{#each later as day (day.id)}
 				<li>
@@ -128,31 +128,9 @@
 		display: block;
 		font-family: var(--font-heading);
 		font-weight: var(--font-heading-weight);
-		font-size: 19px;
+		font-size: var(--text-xl);
 		letter-spacing: -0.015em;
 		line-height: 1.2;
-	}
-
-	.badge {
-		flex: none;
-		width: 46px;
-		height: 46px;
-		border-radius: var(--radius-md);
-		display: grid;
-		place-items: center;
-		font-family: var(--font-heading);
-		font-size: 20px;
-		color: var(--color-accent-100);
-		background: var(--color-accent-800);
-		box-shadow: inset 0 0 0 1px var(--color-accent-600);
-	}
-	.badge-quiet {
-		width: 40px;
-		height: 40px;
-		font-size: 17px;
-		color: var(--color-neutral-300);
-		background: var(--color-neutral-900);
-		box-shadow: none;
 	}
 
 	.tiles,
@@ -214,12 +192,12 @@
 	.tile-value {
 		display: block;
 		font-family: var(--font-heading);
-		font-size: 21px;
+		font-size: var(--text-xl);
 		line-height: 1.2;
 	}
 	.tile-label {
 		display: block;
-		font-size: 11.5px;
+		font-size: var(--text-sm);
 		color: var(--color-neutral-500);
 		margin-top: 1px;
 	}
@@ -234,7 +212,7 @@
 		display: flex;
 		align-items: center;
 		gap: 10px;
-		font-size: 13.5px;
+		font-size: var(--text-md);
 	}
 	.line-name {
 		flex: 1;
@@ -244,15 +222,6 @@
 		white-space: nowrap;
 	}
 
-	.section {
-		color: var(--color-neutral-500);
-		margin: 24px 0 10px;
-	}
-	/* First thing on the page, so it takes the shell's padding rather than
-	   adding its own on top of it. */
-	.section-top {
-		margin-top: 0;
-	}
 	/* The seam between the month's figures and the day in front of you gets more
 	   air than the 24px rhythm between a heading and its own content. */
 	.section-lead {
@@ -272,7 +241,7 @@
 		display: block;
 		font-family: var(--font-heading);
 		font-weight: var(--font-heading-weight);
-		font-size: 16.5px;
+		font-size: var(--text-lg);
 		letter-spacing: -0.01em;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -280,7 +249,7 @@
 	}
 	.row-meta {
 		display: block;
-		font-size: 12px;
+		font-size: var(--text-sm);
 		color: var(--color-neutral-500);
 		margin-top: 2px;
 	}

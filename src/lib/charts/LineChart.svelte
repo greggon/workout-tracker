@@ -92,7 +92,7 @@
 	}
 	.axis {
 		font-size: 9.5px;
-		fill: var(--color-neutral-600);
+		fill: var(--color-neutral-500);
 	}
 	.empty {
 		font-size: 13px;

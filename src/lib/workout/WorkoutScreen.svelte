@@ -403,7 +403,7 @@
 				<button class="btn btn-secondary" onclick={() => queue.drain()} disabled={saving}>
 					Try now
 				</button>
-				<a class="btn btn-primary" href={resolve('/')}>Back to my days</a>
+				<a class="btn btn-primary" href={resolve('/')}>Back to Up Next</a>
 			</div>
 		</section>
 	{/if}
@@ -490,14 +490,14 @@
 		margin: 0;
 	}
 	.day-title {
-		font-size: 12.5px;
+		font-size: var(--text-md);
 	}
 	/* Pushed to the end of the row: it is the one thing here you are not
 	   reading, so it should not sit between the day and its title. */
 	.edit {
 		margin-left: auto;
 		align-self: center;
-		font-size: 12.5px;
+		font-size: var(--text-md);
 		text-decoration: none;
 	}
 
@@ -527,7 +527,7 @@
 		padding: 12px;
 		border: 0;
 		border-radius: 0;
-		font-size: 14.5px;
+		font-size: var(--text-base);
 		/* "Discard 7 sets?" is longer than the label it replaces. */
 		white-space: normal;
 		line-height: 1.25;
@@ -567,7 +567,7 @@
 		text-decoration: none;
 	}
 	.kicker {
-		font-size: 9.5px;
+		font-size: var(--text-xs);
 		letter-spacing: 0.14em;
 		text-transform: uppercase;
 		color: var(--color-accent);
@@ -599,7 +599,7 @@
 		min-width: 0;
 	}
 	.stat-label {
-		font-size: 9.5px;
+		font-size: var(--text-xs);
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
 		color: var(--color-neutral-500);

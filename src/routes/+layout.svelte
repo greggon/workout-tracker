@@ -109,8 +109,10 @@
 	main {
 		max-width: var(--shell-width);
 		margin: 0 auto;
-		/* Clears the floating tab bar. */
-		padding: 18px var(--gutter) 120px;
+		/* The tab bar's clearance is the footer's job (below); this is only the
+		   gap between the last card and the footer's rule. Holding both put
+		   about 230px of empty scroll at the end of every page. */
+		padding: 18px var(--gutter) 24px;
 		padding-left: max(var(--gutter), env(safe-area-inset-left));
 		padding-right: max(var(--gutter), env(safe-area-inset-right));
 	}
@@ -136,7 +138,7 @@
 			no-repeat top / 100% 1px;
 	}
 	small {
-		font-size: 11px;
+		font-size: var(--text-xs);
 		color: color-mix(in srgb, var(--color-text) 45%, transparent);
 	}
 

@@ -254,9 +254,10 @@
 
 	.dot {
 		flex: none;
+		/* The shared quiet badge's size and shape; see .badge-quiet. */
 		width: 38px;
 		height: 38px;
-		border-radius: var(--radius-md);
+		border-radius: 12px;
 		display: grid;
 		place-items: center;
 		font-family: var(--font-heading);
@@ -281,7 +282,7 @@
 		display: block;
 		font-family: var(--font-heading);
 		font-weight: var(--font-heading-weight);
-		font-size: 16.5px;
+		font-size: var(--text-lg);
 		letter-spacing: -0.01em;
 		overflow-wrap: anywhere;
 	}
@@ -291,14 +292,14 @@
 	}
 	.summary {
 		display: block;
-		font-size: 12.5px;
+		font-size: var(--text-sm);
 		color: var(--color-neutral-500);
 		margin-top: 2px;
 	}
 	.count {
 		flex: none;
-		font-size: 11.5px;
-		color: var(--color-neutral-600);
+		font-size: var(--text-sm);
+		color: var(--color-neutral-500);
 	}
 
 	.body {
@@ -314,7 +315,7 @@
 		align-items: center;
 	}
 	.hint-chip {
-		font-size: 11px;
+		font-size: var(--text-xs);
 		color: var(--color-neutral-400);
 		background: var(--color-neutral-900);
 		border-radius: 5px;
@@ -363,7 +364,7 @@
 		align-items: baseline;
 		gap: 5px;
 		min-width: 0;
-		font-size: 13.5px;
+		font-size: var(--text-md);
 		font-family: var(--font-heading);
 		font-weight: var(--font-heading-weight);
 		color: var(--color-text);
@@ -382,7 +383,7 @@
 	}
 	/* What the drawing cannot say: "per side", "bar only", "2.5 lb short". */
 	.load-note {
-		font-size: 11.5px;
+		font-size: var(--text-sm);
 		color: var(--color-neutral-500);
 		margin-top: 1px;
 	}
@@ -391,7 +392,7 @@
 	.history {
 		flex: none;
 		margin-left: auto;
-		font-size: 11.5px;
+		font-size: var(--text-md);
 		text-decoration: none;
 	}
 
@@ -416,15 +417,15 @@
 		gap: 8px;
 	}
 	.set-label {
-		font-size: 10px;
+		font-size: var(--text-xs);
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
 		color: var(--color-neutral-400);
 		margin-right: auto;
 	}
 	.set-target {
-		font-size: 11px;
-		color: var(--color-neutral-600);
+		font-size: var(--text-xs);
+		color: var(--color-neutral-500);
 	}
 
 	/*
@@ -460,7 +461,7 @@
 	.entry-name {
 		flex: 1;
 		min-width: 0;
-		font-size: 13.5px;
+		font-size: var(--text-md);
 		line-height: 1.25;
 		overflow-wrap: anywhere;
 	}

@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import { MAX_SPLIT, MIN_SPLIT } from '$lib/types';
+	import ReorderButtons from '$lib/ui/ReorderButtons.svelte';
 	import { formatVolume } from '$lib/volume';
 
 	let { data, form } = $props();
@@ -20,6 +21,14 @@
 
 	let reorderForm: HTMLFormElement;
 
+	/**
+	 * Reordering is a mode. Each row used to carry its arrows and an "Edit day"
+	 * button all the time, which on a phone wrapped every row onto two lines;
+	 * now a row is one link to its editor, and the arrows come out only when
+	 * asked for.
+	 */
+	let reordering = $state(false);
+
 	function move(index: number, delta: number) {
 		const to = index + delta;
 		if (to < 0 || to >= order.length) return;
@@ -37,10 +46,10 @@
 </svelte:head>
 
 {#if form?.message}
-	<p class="error" role="alert">{form.message}</p>
+	<p class="notice notice-error" role="alert">{form.message}</p>
 {/if}
 
-<h6 class="label">Split</h6>
+<h2 class="section-label">Split</h2>
 <form method="POST" action="?/split" use:enhance class="seg split">
 	{#each splitOptions as size (size)}
 		<label class="seg-opt">
@@ -59,7 +68,19 @@
 	Removing days drops them from the end of the rotation. Past sessions keep their history.
 </p>
 
-<h6 class="label">Days · in rotation order</h6>
+<div class="section-head">
+	<h2 class="section-label">Days · in rotation order</h2>
+	{#if ordered.length > 1}
+		<button
+			type="button"
+			class="btn btn-ghost reorder-toggle"
+			aria-pressed={reordering}
+			onclick={() => (reordering = !reordering)}
+		>
+			{reordering ? 'Done' : 'Reorder'}
+		</button>
+	{/if}
+</div>
 
 <!--
 	The order is written into the submission here, not read back out of the
@@ -81,60 +102,48 @@
 
 <ul class="days">
 	{#each ordered as day, i (day.id)}
-		<li class="day row-card">
-			<div class="arrows">
-				<button
-					class="btn btn-secondary btn-icon arrow"
-					onclick={() => move(i, -1)}
-					disabled={i === 0}
-					aria-label="Move {day.title} earlier"
-				>
+		<li>
+			{#if reordering}
+				<div class="row-card day moving">
+					<span class="badge badge-quiet">{day.key}</span>
+					<span class="text">
+						<span class="title">{day.title}</span>
+					</span>
+					<ReorderButtons
+						name={day.title}
+						first={i === 0}
+						last={i === ordered.length - 1}
+						onmove={(delta) => move(i, delta)}
+					/>
+				</div>
+			{:else}
+				<a class="row-card day" href={resolve('/routine/[id]', { id: day.id })}>
+					<span class="badge badge-quiet">{day.key}</span>
+					<span class="text">
+						<span class="title">{day.title}</span>
+						<span class="meta num">
+							{day.exerciseCount} exercises · {day.sets} sets · {formatVolume(day.volume)} lb
+						</span>
+					</span>
 					<svg
-						width="14"
-						height="14"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2.5"><path d="m6 15 6-6 6 6" /></svg
+						width="17"
+						height="17"
+						viewBox="0 0 256 256"
+						fill="currentColor"
+						class="chev"
+						aria-hidden="true"
 					>
-				</button>
-				<button
-					class="btn btn-secondary btn-icon arrow"
-					onclick={() => move(i, 1)}
-					disabled={i === ordered.length - 1}
-					aria-label="Move {day.title} later"
-				>
-					<svg
-						width="14"
-						height="14"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2.5"><path d="m6 9 6 6 6-6" /></svg
-					>
-				</button>
-			</div>
-
-			<span class="badge">{day.key}</span>
-
-			<span class="text">
-				<span class="title">{day.title}</span>
-				<span class="meta num">
-					{day.exerciseCount} exercises · {day.sets} sets · {formatVolume(day.volume)} lb planned
-				</span>
-			</span>
-
-			<a class="btn btn-secondary edit" href={resolve('/routine/[id]', { id: day.id })}>Edit day</a>
+						<path
+							d="M181.7 133.7l-80 80a8 8 0 0 1-11.4-11.4L164.7 128 90.3 53.7a8 8 0 0 1 11.4-11.4l80 80a8 8 0 0 1 0 11.4Z"
+						/>
+					</svg>
+				</a>
+			{/if}
 		</li>
 	{/each}
 </ul>
 
 <style>
-	.label {
-		color: var(--color-neutral-500);
-		margin: 26px 0 10px;
-	}
-
 	/*
 	 * The split picker as a card rather than the shared pill: it is the page's
 	 * first section, and every other section here is a full-width card, so a
@@ -156,7 +165,7 @@
 		min-width: 0;
 		justify-content: center;
 		padding: 11px 6px;
-		font-size: 13px;
+		font-size: var(--text-md);
 		border-radius: var(--radius-md);
 	}
 	/* The hairline between options belongs to the pill; inside a card the
@@ -170,15 +179,28 @@
 		}
 	}
 	.hint {
-		font-size: 12px;
+		font-size: var(--text-sm);
 		margin: 10px 0 0;
 	}
-	.error {
-		color: var(--color-accent-300);
-		background: var(--color-accent-900);
-		border-radius: var(--radius-md);
-		padding: var(--space-3) var(--space-4);
-		font-size: 13.5px;
+
+	/* The heading shares its row with the Reorder toggle, so the row carries the
+	   section spacing and the heading inside it drops its own. */
+	.section-head {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		margin: 28px 0 10px;
+	}
+	.section-head .section-label {
+		flex: 1;
+		min-width: 0;
+		margin: 0;
+	}
+	.reorder-toggle {
+		flex: none;
+		font-size: var(--text-md);
+		/* Keeps a 44px target without pushing the heading row taller. */
+		margin-block: -12px;
 	}
 
 	.days {
@@ -188,39 +210,11 @@
 		display: grid;
 		gap: 10px;
 	}
-	/* Shares .row-card's surface; a day row is denser than a tappable one and
-	   holds its own controls, so it tightens the shape. */
-	.day {
-		gap: 12px;
-		border-radius: var(--radius-md);
-		padding: 12px 14px;
-	}
-
-	/* The design draws a drag handle here. Explicit arrows work with a thumb,
-	   a keyboard and a screen reader, which pointer-drag does not without a
-	   great deal more machinery. */
-	.arrows {
-		display: grid;
-		gap: 3px;
-		flex: none;
-	}
-	.arrow {
-		width: 30px;
-		height: 22px;
-		min-height: 0;
-	}
-
-	.badge {
-		flex: none;
-		width: 34px;
-		height: 34px;
-		border-radius: var(--radius-md);
-		display: grid;
-		place-items: center;
-		font-family: var(--font-heading);
-		font-size: 15px;
-		color: var(--color-neutral-300);
-		background: var(--color-neutral-900);
+	.moving {
+		padding-block: 10px;
+		box-shadow:
+			inset 0 0 0 1px var(--color-accent-600),
+			var(--shadow-sm);
 	}
 
 	.text {
@@ -231,32 +225,16 @@
 		display: block;
 		font-family: var(--font-heading);
 		font-weight: var(--font-heading-weight);
-		font-size: 16px;
+		font-size: var(--text-lg);
+		letter-spacing: -0.01em;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 	.meta {
 		display: block;
-		font-size: 12px;
+		font-size: var(--text-sm);
 		color: var(--color-neutral-500);
 		margin-top: 2px;
-	}
-	.edit {
-		flex: none;
-		font-size: 12.5px;
-		text-decoration: none;
-	}
-
-	@media (hover: hover) and (pointer: fine) {
-		.day:hover {
-			box-shadow: var(--shadow-md);
-		}
-	}
-
-	@media (max-width: 520px) {
-		.day {
-			flex-wrap: wrap;
-		}
-		.edit {
-			margin-left: auto;
-		}
 	}
 </style>

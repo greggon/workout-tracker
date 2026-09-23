@@ -69,7 +69,7 @@
 					{#if header.kicker}
 						<div class="label kicker">{header.kicker}</div>
 					{/if}
-					<div class="title">{header.title}</div>
+					<h1 class="title">{header.title}</h1>
 				</div>
 
 				<!-- Off during a workout: the row has no width to spare, and the
@@ -133,8 +133,8 @@
 	}
 	@media (pointer: coarse) {
 		.round {
-			width: 38px;
-			height: 38px;
+			width: 44px;
+			height: 44px;
 		}
 	}
 
@@ -146,9 +146,10 @@
 		color: var(--on-section-accent);
 	}
 	.title {
+		margin: 0;
 		font-family: var(--font-heading);
 		font-weight: var(--font-heading-weight);
-		font-size: 27px;
+		font-size: var(--text-2xl);
 		letter-spacing: -0.025em;
 		line-height: 1.15;
 		color: var(--on-section);
@@ -194,7 +195,7 @@
 	}
 	.clock-label {
 		color: var(--on-section-dim);
-		font-size: 11px;
+		font-size: var(--text-xs);
 	}
 	.rest-label {
 		color: var(--on-section-accent);
@@ -241,7 +242,7 @@
 	}
 	.progress-text {
 		flex: none;
-		font-size: 13px;
+		font-size: var(--text-md);
 		color: var(--on-section-accent);
 	}
 

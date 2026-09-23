@@ -45,7 +45,7 @@
 	<p class="text-muted sub">Nothing logged for this movement yet.</p>
 {/if}
 
-<h6 class="section">Working weight</h6>
+<h2 class="section-label">Working weight</h2>
 <div class="chart-card">
 	<LineChart
 		{points}
@@ -53,7 +53,7 @@
 	/>
 </div>
 
-<h6 class="section">History</h6>
+<h2 class="section-label">Sessions</h2>
 <div class="table-wrap">
 	<table class="table">
 		<thead>
@@ -80,14 +80,11 @@
 </div>
 
 <style>
+	/* The intro line every screen opens with: body size, straight under the
+	   shell's padding, the section heading's 28px after it. */
 	.sub {
 		max-width: 52ch;
-		margin: 10px 0 24px;
-		font-size: 14.5px;
-	}
-	.section {
-		color: var(--color-neutral-500);
-		margin: 26px 0 10px;
+		margin: 0;
 	}
 	.chart-card {
 		background: var(--color-surface);

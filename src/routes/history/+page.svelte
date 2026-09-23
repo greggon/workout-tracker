@@ -61,7 +61,7 @@
 		display: block;
 		font-family: var(--font-heading);
 		font-weight: var(--font-heading-weight);
-		font-size: 16.5px;
+		font-size: var(--text-lg);
 		letter-spacing: -0.01em;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -69,7 +69,7 @@
 	}
 	.meta {
 		display: block;
-		font-size: 12px;
+		font-size: var(--text-sm);
 		color: var(--color-neutral-500);
 		margin-top: 2px;
 	}

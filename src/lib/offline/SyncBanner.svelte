@@ -71,7 +71,7 @@
 		border-radius: var(--radius-md);
 		background: var(--color-neutral-900);
 		color: var(--color-neutral-300);
-		font-size: 12.5px;
+		font-size: var(--text-md);
 	}
 	.warn {
 		background: var(--color-accent-900);
@@ -84,7 +84,7 @@
 	}
 	.act {
 		flex: none;
-		font-size: 12.5px;
+		font-size: var(--text-md);
 		text-decoration: none;
 	}
 </style>

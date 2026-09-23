@@ -57,9 +57,8 @@
 	}
 	@media (pointer: coarse) {
 		.toggle {
-			width: 38px;
-			height: 38px;
-			min-height: 0;
+			width: 44px;
+			height: 44px;
 		}
 	}
 </style>

@@ -101,7 +101,7 @@
 	<p class="text-muted sub">{headline}</p>
 
 	{#if syncError}
-		<p class="notice" role="alert">{syncError}</p>
+		<p class="notice notice-warn sync" role="alert">{syncError}</p>
 	{/if}
 
 	<ul class="stats">
@@ -114,7 +114,10 @@
 		{/each}
 	</ul>
 
-	<h6 class="section">Volume · last {summary.history.length - 1} {summary.dayKey} days + today</h6>
+	<h2 class="section-label">
+		Volume · last {summary.history.length - 1}
+		{summary.dayKey} days + today
+	</h2>
 	<div class="chart">
 		<svg
 			viewBox="0 0 {W} {H}"
@@ -142,7 +145,7 @@
 		</svg>
 	</div>
 
-	<h6 class="section">Per movement</h6>
+	<h2 class="section-label">Per movement</h2>
 	<ul class="rows card-list">
 		{#each movementRows as row (row.movementId)}
 			<li class="row">
@@ -154,7 +157,7 @@
 	</ul>
 
 	<div class="actions">
-		<a class="btn btn-secondary" href={resolve('/')}>Back to my days</a>
+		<a class="btn btn-secondary" href={resolve('/')}>Back to Up Next</a>
 		{#if summary.dayId}
 			<a class="btn btn-primary update" href={resolve('/routine/[id]', { id: summary.dayId })}>
 				Update routine
@@ -168,7 +171,7 @@
 		padding-top: 30px;
 	}
 	.kicker {
-		font-size: 9.5px;
+		font-size: var(--text-xs);
 		letter-spacing: 0.14em;
 		text-transform: uppercase;
 		color: var(--color-accent);
@@ -189,12 +192,7 @@
 		max-width: 48ch;
 		margin: 0 0 10px;
 	}
-	.notice {
-		font-size: 13px;
-		color: var(--color-accent-200);
-		background: var(--color-accent-900);
-		border-radius: var(--radius-md);
-		padding: var(--space-3) var(--space-4);
+	.sync {
 		margin-bottom: 10px;
 		max-width: 56ch;
 	}
@@ -253,15 +251,11 @@
 	}
 	.stat-label {
 		display: block;
-		font-size: 11.5px;
+		font-size: var(--text-sm);
 		color: var(--color-neutral-500);
 		margin-top: 1px;
 	}
 
-	.section {
-		color: var(--color-neutral-500);
-		margin: 0 0 10px;
-	}
 	.chart {
 		background: var(--color-surface);
 		border-radius: var(--radius-lg);
@@ -296,7 +290,7 @@
 	}
 	.axis {
 		font-size: 9.5px;
-		fill: var(--color-neutral-600);
+		fill: var(--color-neutral-500);
 	}
 
 	/* The per-movement list, on the card surface. The heading stays outside it,
@@ -320,16 +314,16 @@
 	.row-name {
 		flex: 1 1 40%;
 		min-width: 0;
-		font-size: 14px;
+		font-size: var(--text-base);
 	}
 	.row-detail {
 		flex: 1 1 auto;
-		font-size: 11.5px;
+		font-size: var(--text-sm);
 		color: var(--color-neutral-500);
 	}
 	.row-volume {
 		flex: none;
-		font-size: 12.5px;
+		font-size: var(--text-md);
 		color: var(--color-accent-300);
 	}
 
