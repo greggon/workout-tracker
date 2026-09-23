@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { resolve } from '$app/paths';
-	import DumbbellIcon from './DumbbellIcon.svelte';
 	import NavIcon from './NavIcon.svelte';
 	import { destinations } from './nav';
 
 	/**
-	 * The floating tab bar from v2. Four destinations either side of a center
-	 * action that starts the next workout.
+	 * The M3 navigation bar: the four destinations, each an icon in a pill-shaped
+	 * active indicator over its label.
+	 *
+	 * Starting a workout is not in here. It had a raised center button, but the
+	 * Up Next screen leads with the same action, so the bar is navigation only.
 	 *
 	 * Hidden during a workout: the screen is a single task with its own finish
 	 * button, and a bar offering to navigate away mid-set is an invitation to
@@ -16,83 +17,30 @@
 	 * Hidden again above 900px, where SideRail takes over — the two read the
 	 * same destination list.
 	 */
-	type Props = { nextDayId: string | null };
-	let { nextDayId }: Props = $props();
-
 	const path = $derived(page.url.pathname);
 	const hidden = $derived(path.startsWith('/workout/') || /^\/routine\/[^/]+/.test(path));
 
 	const tabs = destinations();
-
-	const left = tabs.slice(0, 2);
-	const right = tabs.slice(2);
 </script>
 
 {#if !hidden}
-	<nav class="wrap" aria-label="Main">
-		<div class="bar">
-			{#each left as tab (tab.href)}
-				<!-- nav.ts resolves these once; resolve() here would be resolving an
-				     already-resolved path. -->
-				<!-- eslint-disable svelte/no-navigation-without-resolve -->
-				<a
-					class="tab"
-					class:on={tab.match(path)}
-					href={tab.href}
-					aria-current={tab.match(path) ? 'page' : undefined}
-				>
-					<NavIcon name={tab.icon} size={20} />
-					<span>{tab.label}</span>
-				</a>
-				<!-- eslint-enable svelte/no-navigation-without-resolve -->
-			{/each}
-
-			<!-- Always drawn. With no day to start, an empty slot in the middle of
-			     the bar read as something failing to load; setting up the routine
-			     is the thing to do next instead. -->
-			<div class="fab-slot">
-				{#if nextDayId}
-					<a
-						class="fab"
-						href={resolve('/workout/[id]', { id: nextDayId })}
-						title="Start the next day"
-						aria-label="Start the next day"
-					>
-						<DumbbellIcon size={28} />
-					</a>
-				{:else}
-					<a
-						class="fab"
-						href={resolve('/routine')}
-						title="Set up your routine"
-						aria-label="Set up your routine"
-					>
-						<DumbbellIcon size={28} />
-					</a>
-				{/if}
-			</div>
-
-			{#each right as tab (tab.href)}
-				<!-- nav.ts resolves these once; resolve() here would be resolving an
-				     already-resolved path. -->
-				<!-- eslint-disable svelte/no-navigation-without-resolve -->
-				<a
-					class="tab"
-					class:on={tab.match(path)}
-					href={tab.href}
-					aria-current={tab.match(path) ? 'page' : undefined}
-				>
-					<NavIcon name={tab.icon} size={20} />
-					<span>{tab.label}</span>
-				</a>
-				<!-- eslint-enable svelte/no-navigation-without-resolve -->
-			{/each}
-		</div>
+	<nav class="bar" aria-label="Main">
+		{#each tabs as tab (tab.href)}
+			{@const on = tab.match(path)}
+			<!-- nav.ts resolves these once; resolve() here would be resolving an
+			     already-resolved path. -->
+			<!-- eslint-disable svelte/no-navigation-without-resolve -->
+			<a class="tab" class:on href={tab.href} aria-current={on ? 'page' : undefined}>
+				<span class="indicator"><NavIcon name={tab.icon} size={24} /></span>
+				<span class="text">{tab.label}</span>
+			</a>
+			<!-- eslint-enable svelte/no-navigation-without-resolve -->
+		{/each}
 	</nav>
 {/if}
 
 <style>
-	.wrap {
+	.bar {
 		position: fixed;
 		left: 0;
 		right: 0;
@@ -100,74 +48,63 @@
 		z-index: 40;
 		display: flex;
 		justify-content: center;
-		pointer-events: none;
-		padding-bottom: env(safe-area-inset-bottom);
-	}
-	.bar {
-		width: min(var(--shell-width), 100%);
-		margin: 0 12px 12px;
-		background: var(--color-surface);
-		border-radius: var(--radius-xl);
-		box-shadow: var(--shadow-md);
-		display: flex;
-		align-items: center;
-		padding: 6px 8px;
-		pointer-events: auto;
+		gap: 8px;
+		min-height: var(--nav-height);
+		padding: 12px 8px calc(16px + env(safe-area-inset-bottom));
+		background: var(--md-surface-container);
 	}
 
-	/* The rail's glyphs over the label, so the phone and desktop navigations
-	   read as one. 52px tall: a label alone came out near 30px, well under the
-	   44px everything else here is held to. */
 	.tab {
 		flex: 1;
+		max-width: 120px;
 		min-width: 0;
-		min-height: 52px;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		justify-content: center;
-		gap: 3px;
-		padding: 4px 2px;
-		border-radius: 18px;
-		font-size: var(--text-xs);
-		font-weight: 500;
-		line-height: 1.1;
-		color: var(--color-neutral-500);
+		gap: 4px;
+		color: var(--md-on-surface-variant);
 		text-decoration: none;
 	}
-	.tab.on {
-		color: var(--color-accent);
-		background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+	.tab:hover {
+		color: var(--md-on-surface);
 	}
-
-	.fab-slot {
-		flex: none;
-		width: 72px;
-		display: flex;
-		justify-content: center;
-	}
-	.fab {
+	/* The active indicator: a 64×32 pill around the icon. It carries the state
+	   layer too, so hover and press land on the pill rather than the column. */
+	.indicator {
 		display: grid;
 		place-items: center;
-		width: 56px;
-		height: 56px;
-		margin-top: -24px;
+		width: 64px;
+		height: 32px;
 		border-radius: var(--radius-pill);
-		background: linear-gradient(160deg, var(--color-section-glow), var(--color-section) 62%);
-		color: var(--on-section);
-		box-shadow: var(--shadow-md);
-		text-decoration: none;
+		transition: background-color 0.2s ease;
 	}
-	.fab:hover {
-		color: var(--on-section);
-		filter: brightness(1.12);
+	.tab:hover .indicator {
+		background: color-mix(in srgb, var(--md-on-surface) 8%, transparent);
+	}
+	.on .indicator,
+	.on:hover .indicator {
+		color: var(--md-on-secondary-container);
+		background: var(--md-secondary-container);
+	}
+	.text {
+		font-size: var(--text-sm);
+		font-weight: 500;
+		line-height: 16px;
+		letter-spacing: 0.04em;
+		white-space: nowrap;
+	}
+	.on {
+		color: var(--md-on-surface);
+	}
+	.on .text {
+		font-weight: 600;
 	}
 
 	/* The rail replaces this once the window is wide enough to hold one. Last in
 	   the sheet on purpose: a media query adds no specificity, so this has to
-	   come after `.wrap`'s own `display: flex` to win. */
+	   come after `.bar`'s own `display: flex` to win. */
 	@media (min-width: 900px) and (pointer: fine) {
-		.wrap {
+		.bar {
 			display: none;
 		}
 	}

@@ -431,7 +431,7 @@
 	.paired {
 		padding: 12px;
 		border-radius: var(--radius-md);
-		background: color-mix(in srgb, var(--color-bg) 55%, var(--color-surface));
+		background: var(--md-surface-container);
 	}
 	.paired .name > span {
 		color: var(--color-accent);
@@ -478,9 +478,8 @@
 		gap: 10px;
 		margin: 22px calc(-1 * var(--gutter)) 0;
 		padding: 12px var(--gutter) calc(12px + env(safe-area-inset-bottom));
-		background: color-mix(in srgb, var(--color-bg) 88%, transparent);
-		backdrop-filter: blur(12px);
-		box-shadow: 0 -1px 0 var(--color-divider);
+		/* An M3 bottom app bar. */
+		background: var(--md-surface-container);
 	}
 	.actions .btn {
 		flex: 1;
@@ -509,8 +508,6 @@
 			margin-inline: 0;
 			padding: 0;
 			background: none;
-			backdrop-filter: none;
-			box-shadow: none;
 		}
 		.actions .btn {
 			flex: none;

@@ -10,14 +10,11 @@
 	/** Thousands, because planned volume runs to five figures and the tile is narrow. */
 	const thousands = (n: number) => `${Math.round(n / 100) / 10}k`;
 
-	const tiles = $derived(
+	/** The day's size in one supporting line, the way an M3 card states it. */
+	const summary = $derived(
 		upNext
-			? [
-					{ value: String(upNext.exerciseCount), label: 'exercises' },
-					{ value: String(upNext.sets), label: 'sets' },
-					{ value: thousands(upNext.volume), label: 'lb planned' }
-				]
-			: []
+			? `${upNext.exerciseCount} exercises · ${upNext.sets} sets · ${thousands(upNext.volume)} lb`
+			: ''
 	);
 
 	const stats = $derived([
@@ -38,48 +35,44 @@
 {:else}
 	<h2 class="section-label">This month</h2>
 	<ul class="stats">
-		{#each stats as stat, i (stat.label)}
+		{#each stats as stat (stat.label)}
 			<li class="stat">
-				<span class="cap" data-cap={i}></span>
-				<span class="tile-value num">{stat.value}</span>
-				<span class="tile-label">{stat.label}</span>
+				<span class="stat-value num">{stat.value}</span>
+				<span class="stat-label">{stat.label}</span>
 			</li>
 		{/each}
 	</ul>
 
-	<h2 class="section-label section-lead">Up next</h2>
-	<section class="hero card">
+	<h2 class="section-label">Up next</h2>
+	<!-- The thing to act on: a filled card with its heading on a primary strip. -->
+	<section class="hero">
 		<div class="hero-head">
-			<span class="badge">{upNext.key}</span>
+			<span class="badge hero-badge">{upNext.key}</span>
 			<span class="hero-text">
 				<span class="hero-title">{upNext.title}</span>
+				<span class="hero-meta num">{summary}</span>
 			</span>
 		</div>
 
-		<ul class="tiles">
-			{#each tiles as tile, i (tile.label)}
-				<li class="tile">
-					<span class="cap" data-cap={i}></span>
-					<span class="tile-value num">{tile.value}</span>
-					<span class="tile-label">{tile.label}</span>
-				</li>
-			{/each}
-		</ul>
+		<div class="hero-body">
+			<ul class="chips">
+				{#each upNext.chips as chip, i (i)}
+					<li class="chip">{chip}</li>
+				{/each}
+			</ul>
 
-		<ul class="lines">
-			{#each upNext.chips as chip, i (i)}
-				<li class="line"><span class="line-name">{chip}</span></li>
-			{/each}
-		</ul>
-
-		<a class="btn btn-primary btn-block" href={resolve('/workout/[id]', { id: upNext.id })}>
-			Start {upNext.key} day
-		</a>
+			<a class="btn btn-primary btn-block start" href={resolve('/workout/[id]', { id: upNext.id })}>
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+					<path d="M8 5.5v13l10-6.5z" />
+				</svg>
+				Start {upNext.key} day
+			</a>
+		</div>
 	</section>
 
 	{#if later.length}
 		<h2 class="section-label">Then in rotation</h2>
-		<ul class="rotation">
+		<ul class="list-group">
 			{#each later as day (day.id)}
 				<li>
 					<a class="row-card" href={resolve('/workout/[id]', { id: day.id })}>
@@ -93,16 +86,14 @@
 							</span>
 						</span>
 						<svg
-							width="17"
-							height="17"
-							viewBox="0 0 256 256"
+							width="24"
+							height="24"
+							viewBox="0 0 24 24"
 							fill="currentColor"
 							class="chev"
 							aria-hidden="true"
 						>
-							<path
-								d="M181.7 133.7l-80 80a8 8 0 0 1-11.4-11.4L164.7 128 90.3 53.7a8 8 0 0 1 11.4-11.4l80 80a8 8 0 0 1 0 11.4Z"
-							/>
+							<path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
 						</svg>
 					</a>
 				</li>
@@ -112,13 +103,67 @@
 {/if}
 
 <style>
+	.stats,
+	.chips {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+
+	.stats {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 8px;
+	}
+	/* Filled tiles: they separate from the page by tone, not by shadow. */
+	.stat {
+		min-width: 0;
+		padding: 12px 14px;
+		border-radius: var(--radius-md);
+		background: var(--md-surface-container);
+	}
+	.stat-value {
+		display: block;
+		font-family: var(--font-heading);
+		font-size: 28px;
+		line-height: 36px;
+		white-space: nowrap;
+	}
+	.stat-label {
+		display: block;
+		font-size: var(--text-sm);
+		color: var(--md-on-surface-variant);
+	}
+
+	/*
+	 * A filled card, no outline or shadow, whose heading sits on a strip of the
+	 * full primary — the one block of strong color on the screen, so the day in
+	 * front of you is the first thing read. The open exercise in a workout uses
+	 * the same shape a tone down.
+	 */
 	.hero {
-		gap: 0;
+		overflow: hidden;
+		border-radius: var(--radius-lg);
+		background: var(--md-surface-container);
 	}
 	.hero-head {
 		display: flex;
 		align-items: center;
-		gap: 14px;
+		gap: 16px;
+		padding: 16px;
+		color: var(--md-on-primary);
+		background: var(--md-primary);
+	}
+	/* Inverted onto the strip: the page's surface with the primary as ink. */
+	.hero-badge {
+		color: var(--md-primary);
+		background: var(--md-surface);
+	}
+	.hero-body {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+		padding: 16px;
 	}
 	.hero-text {
 		flex: 1;
@@ -126,131 +171,50 @@
 	}
 	.hero-title {
 		display: block;
-		font-family: var(--font-heading);
-		font-weight: var(--font-heading-weight);
-		font-size: var(--text-xl);
-		letter-spacing: -0.015em;
-		line-height: 1.2;
+		font-size: var(--text-lg);
+		font-weight: 500;
+		line-height: 24px;
+	}
+	.hero-meta {
+		display: block;
+		font-size: var(--text-md);
+		opacity: 0.85;
 	}
 
-	.tiles,
-	.lines,
-	.rotation,
-	.stats {
-		list-style: none;
-		margin: 0;
-		padding: 0;
-	}
-
-	.tiles,
-	.stats {
+	.chips {
 		display: flex;
+		flex-wrap: wrap;
 		gap: 8px;
 	}
-	.tiles {
-		margin-top: 16px;
-	}
-	.tile,
-	.stat {
-		flex: 1;
-		min-width: 0;
-		border-radius: var(--radius-md);
-		padding: 12px 10px 13px;
-		text-align: center;
-	}
-	.tile {
-		background: var(--color-bg);
-	}
-	.stat {
-		background: var(--color-surface);
-		box-shadow: var(--shadow-sm);
-		border-radius: var(--radius-md);
-		text-align: left;
-		padding: 14px;
-	}
-	/* A short colored cap above each figure, so three identical tiles are
-	   still distinguishable at a glance. */
-	.cap {
+	/* Block rather than the chip's flex, so a long name can ellipsize. */
+	.chip {
 		display: block;
-		width: 18px;
-		height: 3px;
-		border-radius: var(--radius-pill);
-		margin-bottom: 9px;
-	}
-	.tile .cap {
-		margin-inline: auto;
-	}
-	.cap[data-cap='0'] {
-		background: var(--color-accent-500);
-	}
-	.cap[data-cap='1'] {
-		background: var(--color-accent-2-500);
-	}
-	.cap[data-cap='2'] {
-		background: var(--color-neutral-500);
-	}
-	.tile-value {
-		display: block;
-		font-family: var(--font-heading);
-		font-size: var(--text-xl);
-		line-height: 1.2;
-	}
-	.tile-label {
-		display: block;
-		font-size: var(--text-sm);
-		color: var(--color-neutral-500);
-		margin-top: 1px;
-	}
-
-	.lines {
-		display: flex;
-		flex-direction: column;
-		gap: 7px;
-		margin-top: 16px;
-	}
-	.line {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		font-size: var(--text-md);
-	}
-	.line-name {
-		flex: 1;
-		min-width: 0;
+		line-height: 30px;
+		max-width: 100%;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 
-	/* The seam between the month's figures and the day in front of you gets more
-	   air than the 24px rhythm between a heading and its own content. */
-	.section-lead {
-		margin-top: 32px;
+	.start {
+		margin-top: 0;
 	}
 
-	.rotation {
-		display: flex;
-		flex-direction: column;
-		gap: 10px;
-	}
 	.row-text {
 		flex: 1;
 		min-width: 0;
 	}
 	.row-title {
 		display: block;
-		font-family: var(--font-heading);
-		font-weight: var(--font-heading-weight);
-		font-size: var(--text-lg);
-		letter-spacing: -0.01em;
+		font-size: var(--text-base);
+		line-height: 24px;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 	.row-meta {
 		display: block;
-		font-size: var(--text-sm);
-		color: var(--color-neutral-500);
-		margin-top: 2px;
+		font-size: var(--text-md);
+		color: var(--md-on-surface-variant);
 	}
 </style>

@@ -6,11 +6,10 @@ import { rotateFrom } from '$lib/volume';
 import type { LayoutServerLoad } from './$types';
 
 /**
- * Build stamp, plus the day the tab bar's center button — and the desktop
- * rail's start button — begins.
+ * Build stamp, plus the day the desktop rail's start button begins.
  *
- * The rotation lives here rather than on the home page because both navigations
- * are on every screen — asking each route to compute it would be four copies of the
+ * The rotation lives here rather than on the home page because the rail is on
+ * every screen — asking each route to compute it would be four copies of the
  * same "what is next" rule.
  */
 export const load: LayoutServerLoad = async ({ locals }) => {

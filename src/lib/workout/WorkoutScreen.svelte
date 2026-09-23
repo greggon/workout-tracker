@@ -349,9 +349,11 @@
 			if (!el) return;
 			// Measured rather than a constant: the header is pinned while training,
 			// so anything it covers is landed on but not visible, and how much it
-			// covers depends on the safe-area inset and the window width.
+			// covers depends on the safe-area inset and the window width. The
+			// header's own bottom gap already separates the two, so only a
+			// little more is added here.
 			const header = document.querySelector('header')?.getBoundingClientRect().height ?? 0;
-			const top = el.getBoundingClientRect().top + window.scrollY - header - 14;
+			const top = el.getBoundingClientRect().top + window.scrollY - header - 4;
 			window.scrollTo({ top, behavior: 'smooth' });
 		}, 80);
 	}
@@ -452,16 +454,15 @@
 	</ul>
 
 	<!--
-		One card, split down the middle: the two ways a workout can end, given
-		equal room and a line between them so neither is tapped for the other.
+		The two ways a workout can end, pinned to the bottom while you train:
+		finishing is the filled button and takes the width; quitting is a text
+		button in the error color, well to its side.
 	-->
 	<div class="actions">
-		<button class="btn act finish" onclick={finish} disabled={saving}>
-			{saving ? 'Saving…' : 'Finish workout'}
-		</button>
 		<button
 			class="btn act quit"
-			class:danger={confirmQuit}
+			class:btn-danger-quiet={!confirmQuit}
+			class:btn-danger={confirmQuit}
 			type="button"
 			onclick={pressQuit}
 			disabled={quitting}
@@ -469,8 +470,11 @@
 			{#if confirmQuit}
 				Discard {session.loggedCount} set{session.loggedCount === 1 ? '' : 's'}?
 			{:else}
-				Quit without saving
+				Quit
 			{/if}
+		</button>
+		<button class="btn btn-primary act finish" onclick={finish} disabled={saving}>
+			{saving ? 'Saving…' : 'Finish workout'}
 		</button>
 	</div>
 {/if}
@@ -485,8 +489,8 @@
 		margin-bottom: 18px;
 	}
 	h2 {
-		font-size: 30px;
-		letter-spacing: -0.025em;
+		font-size: 28px;
+		line-height: 36px;
 		margin: 0;
 	}
 	.day-title {
@@ -513,47 +517,45 @@
 	}
 
 	.actions {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		margin-top: 26px;
-		border-radius: var(--radius-lg);
-		background: var(--color-surface);
-		box-shadow: var(--shadow-sm);
-		/* The halves square off their own corners; the card rounds them. */
-		overflow: hidden;
+		position: sticky;
+		bottom: 0;
+		z-index: 20;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin: 24px calc(-1 * var(--gutter)) 0;
+		padding: 12px var(--gutter) calc(12px + env(safe-area-inset-bottom));
+		background: var(--md-surface-container);
 	}
 	.act {
-		min-height: 60px;
-		padding: 12px;
-		border: 0;
-		border-radius: 0;
-		font-size: var(--text-base);
 		/* "Discard 7 sets?" is longer than the label it replaces. */
 		white-space: normal;
 		line-height: 1.25;
-		text-decoration: none;
+	}
+	.quit {
+		flex: none;
+		min-height: 48px;
 	}
 	.finish {
-		color: var(--color-accent-100);
-		background: var(--color-accent-800);
+		flex: 1;
+		min-height: 56px;
+		border-radius: var(--radius-lg);
+		font-size: var(--text-base);
 	}
-	.finish:hover:not(:disabled) {
-		background: color-mix(in srgb, var(--color-accent) 22%, var(--color-accent-800));
-	}
-	/* The hairline is what stops a thumb aimed at one landing on the other. */
-	.quit {
-		color: var(--color-neutral-500);
-		box-shadow: inset 1px 0 0 var(--color-divider);
-	}
-	.quit:hover:not(:disabled) {
-		color: var(--color-text);
-		background: color-mix(in srgb, var(--color-text) 6%, transparent);
-	}
-	/* Armed: one more tap throws the workout away, and it says how much. */
-	.danger,
-	.danger:hover:not(:disabled) {
-		color: var(--color-danger);
-		background: var(--color-danger-bg);
+
+	@media (min-width: 900px) and (pointer: fine) {
+		.actions {
+			position: static;
+			margin-inline: 0;
+			padding: 0;
+			background: none;
+			flex-direction: row-reverse;
+			justify-content: flex-end;
+		}
+		.finish {
+			flex: none;
+			min-width: 200px;
+		}
 	}
 
 	.pending {
@@ -567,54 +569,50 @@
 		text-decoration: none;
 	}
 	.kicker {
-		font-size: var(--text-xs);
-		letter-spacing: 0.14em;
-		text-transform: uppercase;
-		color: var(--color-accent);
-		margin-bottom: 6px;
+		font-size: var(--text-sm);
+		font-weight: 500;
+		color: var(--md-primary);
+		margin-bottom: 4px;
 	}
 	.pending h2 {
-		font-size: 40px;
-		letter-spacing: -0.03em;
+		font-size: var(--text-3xl);
+		line-height: 44px;
 		margin-bottom: 8px;
 	}
 	/* Same rhythm as the saved summary this screen turns into. */
 	.sub {
 		max-width: 48ch;
-		margin: 0 0 10px;
+		margin: 0 0 12px;
 	}
-	/* The same card as the saved summary shows a moment later — this screen is
-	   only up until the server answers, so the two must not jump. */
+	/* The same filled tiles as the saved summary shows a moment later — this
+	   screen is only up until the server answers, so the two must not jump. */
 	.stats {
 		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: 10px;
-		margin-bottom: 22px;
-		padding: 14px 16px 15px;
-		border-radius: var(--radius-lg);
-		background: var(--color-surface);
-		box-shadow: var(--shadow-sm);
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 8px;
+		margin-bottom: 24px;
 	}
 	.stats > li {
 		min-width: 0;
+		padding: 12px 14px;
+		border-radius: var(--radius-md);
+		background: var(--md-surface-container);
 	}
 	.stat-label {
-		font-size: var(--text-xs);
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
-		color: var(--color-neutral-500);
+		font-size: var(--text-sm);
+		color: var(--md-on-surface-variant);
 	}
-	/* Matches the summary card this screen hands over to — a figure and its unit
-	   are one word, and the unit is small enough to cost the column nothing. */
+	/* A figure and its unit are one word, and the unit is small enough to cost
+	   the column nothing. */
 	.stat-value {
 		font-family: var(--font-heading);
-		font-size: clamp(17px, 6vw, 27px);
-		line-height: 1.15;
+		font-size: clamp(20px, 6vw, 28px);
+		line-height: 36px;
 		white-space: nowrap;
 	}
 	.stat-unit {
 		font-size: 0.55em;
 		margin-left: 0.12em;
-		color: var(--color-neutral-500);
+		color: var(--md-on-surface-variant);
 	}
 </style>

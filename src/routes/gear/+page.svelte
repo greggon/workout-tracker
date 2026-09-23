@@ -458,12 +458,9 @@
 		min-width: 0;
 	}
 	.plates-head {
-		font-size: var(--text-xs);
+		font-size: var(--text-sm);
 		font-weight: 500;
-		letter-spacing: 0.1em;
-		text-transform: uppercase;
-		/* Not neutral-600: under AA for text on a card. */
-		color: var(--color-neutral-500);
+		color: var(--md-on-surface-variant);
 	}
 	/*
 	 * A heading labels the value, not the box around it. An .input puts a 1px
@@ -473,7 +470,7 @@
 	 * fill their cells.
 	 */
 	.plates-head > span:nth-child(-n + 2) {
-		padding-left: 13px;
+		padding-left: 17px;
 	}
 	/* A heading that outgrows its column would otherwise print straight over the
 	   next one rather than being clipped by it. */
@@ -495,8 +492,8 @@
 		height: 34px;
 		padding: 0;
 		background: none;
-		border: 1px solid var(--color-divider);
-		border-radius: var(--radius-sm);
+		border: 1px solid var(--md-outline);
+		border-radius: 4px;
 		cursor: pointer;
 	}
 	.swatch:hover {
@@ -509,15 +506,15 @@
 	}
 	.swatch::-webkit-color-swatch {
 		border: 0;
-		border-radius: 6px;
+		border-radius: 2px;
 	}
 	.swatch::-moz-color-swatch {
 		border: 0;
-		border-radius: 6px;
+		border-radius: 2px;
 	}
 	@media (pointer: coarse) {
 		.swatch {
-			height: 44px;
+			height: 56px;
 		}
 	}
 

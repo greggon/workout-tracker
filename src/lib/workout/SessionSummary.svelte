@@ -105,9 +105,8 @@
 	{/if}
 
 	<ul class="stats">
-		{#each stats as stat, i (stat.label)}
+		{#each stats as stat (stat.label)}
 			<li class="stat">
-				<span class="cap" data-cap={i}></span>
 				<span class="stat-value num">{stat.value}</span>
 				<span class="stat-label">{stat.label}</span>
 			</li>
@@ -171,15 +170,14 @@
 		padding-top: 30px;
 	}
 	.kicker {
-		font-size: var(--text-xs);
-		letter-spacing: 0.14em;
-		text-transform: uppercase;
-		color: var(--color-accent);
-		margin-bottom: 6px;
+		font-size: var(--text-sm);
+		font-weight: 500;
+		color: var(--md-primary);
+		margin-bottom: 4px;
 	}
-	h2 {
-		font-size: 40px;
-		letter-spacing: -0.03em;
+	h2:not(.section-label) {
+		font-size: var(--text-3xl);
+		line-height: 44px;
 		margin: 0 0 8px;
 	}
 	/*
@@ -216,28 +214,9 @@
 	.stat {
 		flex: 1;
 		min-width: 0;
-		padding: 14px;
+		padding: 12px 14px;
 		border-radius: var(--radius-md);
-		background: var(--color-surface);
-		box-shadow: var(--shadow-sm);
-	}
-	/* A short colored cap above each figure, so three identical cards are still
-	   distinguishable at a glance. The home screen's colors, in its order. */
-	.cap {
-		display: block;
-		width: 18px;
-		height: 3px;
-		border-radius: var(--radius-pill);
-		margin-bottom: 9px;
-	}
-	.cap[data-cap='0'] {
-		background: var(--color-accent-500);
-	}
-	.cap[data-cap='1'] {
-		background: var(--color-accent-2-500);
-	}
-	.cap[data-cap='2'] {
-		background: var(--color-neutral-500);
+		background: var(--md-surface-container);
 	}
 	/* The home screen's 21px, but allowed to shrink: this screen prints a real
 	   session's volume, which runs to five figures in a card a third of a phone
@@ -245,8 +224,8 @@
 	.stat-value {
 		display: block;
 		font-family: var(--font-heading);
-		font-size: clamp(17px, 5.4vw, 21px);
-		line-height: 1.2;
+		font-size: clamp(20px, 6vw, 28px);
+		line-height: 36px;
 		white-space: nowrap;
 	}
 	.stat-label {

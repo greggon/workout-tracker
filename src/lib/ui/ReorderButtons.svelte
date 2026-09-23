@@ -21,7 +21,7 @@
 <div class="reorder">
 	<button
 		type="button"
-		class="btn btn-secondary btn-icon arrow"
+		class="btn btn-secondary btn-icon"
 		onclick={() => onmove(-1)}
 		disabled={first}
 		aria-label="Move {name} earlier"
@@ -40,7 +40,7 @@
 	</button>
 	<button
 		type="button"
-		class="btn btn-secondary btn-icon arrow"
+		class="btn btn-secondary btn-icon"
 		onclick={() => onmove(1)}
 		disabled={last}
 		aria-label="Move {name} later"
@@ -60,14 +60,11 @@
 </div>
 
 <style>
+	/* Two M3 outlined icon buttons; the shared classes supply size (40px, 48px
+	   on touch), shape and state layer. */
 	.reorder {
 		flex: none;
 		display: flex;
-		gap: 6px;
-	}
-	/* The shared icon button's size — 38px, 44px on touch — squared off a
-	   little so a pair reads as one control rather than two loose pills. */
-	.arrow {
-		border-radius: 14px;
+		gap: 4px;
 	}
 </style>

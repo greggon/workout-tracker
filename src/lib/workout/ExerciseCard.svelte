@@ -95,9 +95,9 @@
 	{#if open}
 		<div class="body">
 			<div class="hints">
-				<span class="hint-chip">Last time · {lastHint}</span>
+				<span class="tag tag-accent">Last time · {lastHint}</span>
 				{#if exercise.note}
-					<span class="tag tag-accent">{exercise.note}</span>
+					<span class="tag tag-outline">{exercise.note}</span>
 				{/if}
 			</div>
 
@@ -144,8 +144,7 @@
 
 			<div class="sets">
 				{#each setIndexes as setIndex (setIndex)}
-					{@const setDone = movements.every((_, m) => session.reps(index, setIndex, m) != null)}
-					<div class="set" class:set-done={setDone}>
+					<div class="set">
 						<div class="set-head">
 							<span class="set-label">Set {setIndex + 1}</span>
 							<span class="set-target num">{exercise.reps} reps</span>
@@ -193,8 +192,8 @@
 									aria-label="Hit all {exercise.reps} reps, {movement.name}, set {setIndex + 1}"
 								>
 									<svg
-										width="14"
-										height="14"
+										width="22"
+										height="22"
 										viewBox="0 0 24 24"
 										fill="none"
 										stroke="currentColor"
@@ -213,29 +212,34 @@
 </li>
 
 <style>
+	/*
+	 * Closed, an exercise is a list row. Open, it is a filled card whose header
+	 * row sits on a primary-container strip — the same colored-header card as
+	 * Up Next, one tone down, so "the thing you are doing now" reads the same
+	 * way on both screens. No outline and no shadow: the tones separate it.
+	 */
 	.card-wrap {
 		border-radius: var(--radius-lg);
-		box-shadow: inset 0 0 0 1px var(--color-divider);
-		transition:
-			opacity 0.3s ease,
-			background 0.3s ease;
+		overflow: hidden;
+		transition: background 0.3s ease;
 	}
 	.card-wrap.open {
-		background: var(--color-surface);
-		/* Not a literal black shadow: at 45% it is invisible on a dark ground
-		   and a bruise on a light one. */
-		box-shadow:
-			inset 0 0 0 1px var(--color-accent-600),
-			var(--shadow-md);
+		background: var(--md-surface-container);
 	}
-	.card-wrap.done {
-		opacity: 0.55;
+	.open .head {
+		padding-block: 12px;
+		color: var(--md-on-primary-container);
+		background: var(--md-primary-container);
 	}
-	/* Faded while it sits there finished, full strength while you are correcting
-	   it — dimmed inputs are exactly what you do not want to read when fixing a
-	   number you got wrong. */
-	.card-wrap.done.open {
-		opacity: 1;
+	.open .summary,
+	.open .count {
+		color: var(--md-on-primary-container);
+	}
+	/* Finished and closed: the row steps back in ink rather than fading as a
+	   whole, so the check on its avatar stays at full strength. */
+	.card-wrap.done:not(.open) .name,
+	.card-wrap.done:not(.open) .summary {
+		color: var(--md-on-surface-variant);
 	}
 
 	.head {
@@ -254,24 +258,25 @@
 
 	.dot {
 		flex: none;
-		/* The shared quiet badge's size and shape; see .badge-quiet. */
-		width: 38px;
-		height: 38px;
-		border-radius: 12px;
+		/* The shared list avatar; see .badge. */
+		width: 40px;
+		height: 40px;
+		border-radius: var(--radius-pill);
 		display: grid;
 		place-items: center;
-		font-family: var(--font-heading);
 		font-size: 16px;
-		color: var(--color-neutral-300);
-		background: var(--color-neutral-900);
+		font-weight: 500;
+		color: var(--md-on-secondary-container);
+		background: var(--md-secondary-container);
 	}
+	/* On the primary-container strip, the avatar takes the full primary. */
 	.dot-open {
-		color: var(--color-accent-200);
-		background: var(--color-accent-800);
-		box-shadow: inset 0 0 0 1px var(--color-accent-600);
+		color: var(--md-on-primary);
+		background: var(--md-primary);
 	}
 	.dot-done {
-		color: var(--color-accent-400);
+		color: var(--md-on-primary);
+		background: var(--md-primary);
 	}
 
 	.head-text {
@@ -303,7 +308,7 @@
 	}
 
 	.body {
-		padding: 0 16px 16px;
+		padding: 12px 16px 16px;
 		display: grid;
 		gap: 14px;
 	}
@@ -313,13 +318,6 @@
 		flex-wrap: wrap;
 		gap: 8px;
 		align-items: center;
-	}
-	.hint-chip {
-		font-size: var(--text-xs);
-		color: var(--color-neutral-400);
-		background: var(--color-neutral-900);
-		border-radius: 5px;
-		padding: 4px 9px;
 	}
 
 	.loads {
@@ -384,7 +382,7 @@
 	/* What the drawing cannot say: "per side", "bar only", "2.5 lb short". */
 	.load-note {
 		font-size: var(--text-sm);
-		color: var(--color-neutral-500);
+		color: var(--md-on-surface-variant);
 		margin-top: 1px;
 	}
 	/* Safe to leave mid-workout: the session is on the device, and coming back
@@ -400,16 +398,11 @@
 		display: grid;
 		gap: 8px;
 	}
+	/* Sets sit straight on the card's fill; the check buttons carry which are
+	   done, so the rows themselves need no box. */
 	.set {
-		border-radius: var(--radius-sm);
-		background: color-mix(in srgb, var(--color-neutral-900) 60%, transparent);
-		padding: 8px 10px;
 		display: grid;
-		gap: 6px;
-	}
-	.set-done {
-		background: transparent;
-		box-shadow: inset 0 0 0 1px var(--color-divider);
+		gap: 8px;
 	}
 	.set-head {
 		display: flex;
@@ -417,21 +410,20 @@
 		gap: 8px;
 	}
 	.set-label {
-		font-size: var(--text-xs);
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
-		color: var(--color-neutral-400);
+		font-size: var(--text-sm);
+		font-weight: 500;
+		color: var(--md-on-surface);
 		margin-right: auto;
 	}
 	.set-target {
-		font-size: var(--text-xs);
-		color: var(--color-neutral-500);
+		font-size: var(--text-sm);
+		color: var(--md-on-surface-variant);
 	}
 
 	/*
 	 * The two controls are the same size on purpose: they are alternatives, and
-	 * both are aimed at with a thumb between sets. One height for both, sized up
-	 * on touch — 38px was under the 44px everything else in a workout gets.
+	 * both are aimed at with a thumb between sets. One height for both: M3's
+	 * 56px text field on touch, 48px with a pointer.
 	 */
 	.entry {
 		display: flex;
@@ -440,12 +432,12 @@
 		/* A grid item takes its content as its automatic minimum; this says the
 		   row may be as narrow as the track it sits in. */
 		min-width: 0;
-		--entry-h: 40px;
-		--entry-w: 72px;
+		--entry-h: 48px;
+		--entry-w: 88px;
 	}
 	@media (pointer: coarse) {
 		.entry {
-			--entry-h: 48px;
+			--entry-h: 56px;
 		}
 	}
 	/*
@@ -465,11 +457,14 @@
 		line-height: 1.25;
 		overflow-wrap: anywhere;
 	}
+	/* The field takes the page's surface so it reads as a place to type on
+	   the card's grey. */
 	.entry-reps {
 		flex: none;
 		width: var(--entry-w);
 		height: var(--entry-h);
 		text-align: center;
+		background: var(--md-surface);
 	}
 	/*
 	 * A logged set always shows in exactly one place: here when the number is off
@@ -478,21 +473,24 @@
 	 * same thing twice and read as two separate states.
 	 */
 	.entry-reps.logged {
-		border-color: var(--color-accent);
-		background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+		border-color: var(--md-primary);
+		box-shadow: inset 0 0 0 1px var(--md-primary);
+		background: color-mix(in srgb, var(--md-primary) 8%, transparent);
 	}
 
+	/* An M3 filled tonal icon button, round, that fills with the primary once
+	   the set is at its prescribed reps. */
 	.check {
 		flex: none;
-		width: var(--entry-w);
+		width: var(--entry-h);
 		height: var(--entry-h);
-		border-color: var(--color-divider);
-		color: var(--color-neutral-500);
+		padding: 0;
+		color: var(--md-on-secondary-container);
+		background: var(--md-secondary-container);
 	}
 	/* Filled at the prescribed reps, however they got there — typed or tapped. */
 	.check.checked {
-		color: var(--color-accent);
-		border-color: var(--color-accent);
-		background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+		color: var(--md-on-primary);
+		background: var(--md-primary);
 	}
 </style>

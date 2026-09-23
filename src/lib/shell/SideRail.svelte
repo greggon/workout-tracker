@@ -83,8 +83,7 @@
 			padding: 20px 14px 16px;
 			padding-left: max(14px, env(safe-area-inset-left));
 			padding-bottom: calc(16px + env(safe-area-inset-bottom));
-			background: var(--color-surface);
-			border-right: 1px solid var(--color-divider);
+			background: var(--md-surface-container-low);
 		}
 	}
 
@@ -102,37 +101,35 @@
 		height: 34px;
 		flex: none;
 		border-radius: var(--radius-md);
-		background: linear-gradient(160deg, var(--color-section-glow), var(--color-section) 62%);
-		color: var(--on-section);
+		background: var(--md-primary-container);
+		color: var(--md-on-primary-container);
 	}
 	.wordmark {
 		font-family: var(--font-heading);
-		font-weight: var(--font-heading-weight);
-		font-size: 17px;
-		letter-spacing: -0.015em;
+		font-weight: 500;
+		font-size: var(--text-lg);
 	}
 
-	/* The one thing you came here to do, given the weight it deserves. Same
-	   gradient as the tab bar's center button: it is the same action. */
+	/* The one thing you came here to do: an M3 extended FAB at the top of the
+	   drawer, where M3 puts a drawer's primary action. */
 	.start {
 		display: flex;
 		align-items: center;
-		justify-content: center;
-		gap: 9px;
-		margin: 18px 0 20px;
-		padding: 11px 14px;
-		border-radius: var(--radius-md);
-		background: linear-gradient(160deg, var(--color-section-glow), var(--color-section) 62%);
-		color: var(--on-section);
-		box-shadow: var(--shadow-sm);
+		gap: 12px;
+		margin: 18px 0 16px;
+		min-height: 56px;
+		padding: 0 20px 0 16px;
+		border-radius: var(--radius-lg);
+		background: var(--md-primary-container);
+		color: var(--md-on-primary-container);
+		box-shadow: var(--shadow-lg);
 		text-decoration: none;
-		font-family: var(--font-heading);
-		font-weight: var(--font-heading-weight);
-		font-size: 14px;
+		font-weight: 500;
+		font-size: var(--text-md);
 	}
 	.start:hover {
-		color: var(--on-section);
-		filter: brightness(1.12);
+		color: var(--md-on-primary-container);
+		background: color-mix(in srgb, var(--md-on-primary-container) 8%, var(--md-primary-container));
 	}
 
 	.links {
@@ -143,23 +140,27 @@
 		flex-direction: column;
 		gap: 2px;
 	}
+	/* M3 navigation drawer items: 56px, fully rounded, the active one on the
+	   secondary container. */
 	.link {
 		display: flex;
 		align-items: center;
-		gap: 11px;
-		padding: 9px 11px;
-		border-radius: var(--radius-md);
-		font-size: 13.5px;
-		color: var(--color-neutral-500);
+		gap: 12px;
+		min-height: 56px;
+		padding: 0 24px 0 16px;
+		border-radius: var(--radius-pill);
+		font-size: var(--text-md);
+		font-weight: 500;
+		color: var(--md-on-surface-variant);
 		text-decoration: none;
 	}
 	.link:hover {
-		color: var(--color-text);
-		background: color-mix(in srgb, var(--color-text) 6%, transparent);
+		color: var(--md-on-surface);
+		background: color-mix(in srgb, var(--md-on-surface) 8%, transparent);
 	}
 	.link.on {
-		color: var(--color-accent);
-		background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+		color: var(--md-on-secondary-container);
+		background: var(--md-secondary-container);
 	}
 
 	/* The build stamp lives down here on desktop rather than under the page, so
@@ -167,10 +168,10 @@
 	.foot {
 		margin-top: auto;
 		padding: 12px 11px 0;
-		border-top: 1px solid var(--color-divider);
+		border-top: 1px solid var(--md-outline-variant);
 	}
 	small {
-		font-size: 11px;
+		font-size: var(--text-xs);
 		color: color-mix(in srgb, var(--color-text) 45%, transparent);
 	}
 </style>

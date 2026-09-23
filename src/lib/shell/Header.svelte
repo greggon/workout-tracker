@@ -25,58 +25,59 @@
 	);
 </script>
 
+<!--
+	An M3 large top app bar: a 64px row of icon buttons — back on the left, the
+	theme toggle on the right — with the headline under it. It sits on the page's
+	own surface; the page scrolls it away.
+-->
 <header class:training={showClocks}>
 	<div class="inner">
-		<div class="bar">
-			{#if header.back}
-				<!--
-					Back is navigation, so it is a link: middle-click, long-press and
-					"open in new tab" all work, and it needs no JavaScript. Callers put an
-					already-resolved path into chrome.back, so resolve() here would be
-					resolving a resolved path.
-				-->
-				<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-				<a class="round" href={header.back} aria-label="Back">
-					<svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
-						<path
-							d="M165.7 202.3a8 8 0 0 1-11.4 11.4l-80-80a8 8 0 0 1 0-11.4l80-80a8 8 0 0 1 11.4 11.4L91.3 128Z"
-						/>
-					</svg>
-				</a>
-			{/if}
-
-			{#if showClocks}
-				<!--
-					Training. The clocks take the title's place in the row rather than
-					sitting under it: stacked, this header ran to a third of a phone
-					screen, and a bar that tall cannot be pinned without burying the
-					sets you are trying to read. The day and its title are already the
-					first thing on the page below, so nothing is lost by dropping them
-					here.
-				-->
-				<div class="clocks">
-					<div class="clock">
-						<div class="label clock-label">Session</div>
-						<div class="num clock-value">{chrome.sessionClock}</div>
-					</div>
-					<div class="clock rest">
-						<div class="label clock-label rest-label">Resting</div>
-						<div class="num clock-value rest-value">{chrome.restClock}</div>
-					</div>
+		{#if showClocks}
+			<!--
+				Training. The bar becomes the instrument panel and is pinned: a session
+				clock you have to scroll up to read is a clock you stop reading, and
+				rest between sets is timed by the one number that goes off screen
+				first. The day and its title are the first thing on the page below,
+				so the headline steps out to keep the panel short enough to pin.
+			-->
+			<div class="clocks">
+				<div class="clock">
+					<div class="label clock-label">Session</div>
+					<div class="num clock-value">{chrome.sessionClock}</div>
 				</div>
-			{:else}
-				<div class="titles">
-					{#if header.kicker}
-						<div class="label kicker">{header.kicker}</div>
-					{/if}
-					<h1 class="title">{header.title}</h1>
+				<div class="clock rest">
+					<div class="label clock-label">Resting</div>
+					<div class="num clock-value">{chrome.restClock}</div>
 				</div>
-
-				<!-- Off during a workout: the row has no width to spare, and the
-				     theme is not something you change mid-set. -->
+			</div>
+		{:else}
+			<div class="bar">
+				{#if header.back}
+					<!--
+						Back is navigation, so it is a link: middle-click, long-press and
+						"open in new tab" all work, and it needs no JavaScript. Callers put
+						an already-resolved path into header.back, so resolve() here would
+						be resolving a resolved path.
+					-->
+					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+					<a class="btn btn-icon back" href={header.back} aria-label="Back">
+						<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+							<path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20z" />
+						</svg>
+					</a>
+				{/if}
+				<!-- Off during a workout: the theme is not something you change
+				     mid-set. -->
 				<ThemeToggle />
-			{/if}
-		</div>
+			</div>
+
+			<div class="titles">
+				{#if header.kicker}
+					<div class="label kicker">{header.kicker}</div>
+				{/if}
+				<h1 class="title">{header.title}</h1>
+			</div>
+		{/if}
 
 		{#if progressPct !== null}
 			<div class="progress">
@@ -90,15 +91,9 @@
 </header>
 
 <style>
-	/*
-	 * The one surface that stays deep indigo in both themes. It is the app's own
-	 * chrome, so its ink comes from the --on-section tokens rather than the page
-	 * palette — those two grounds are independent once light mode exists.
-	 */
 	header {
-		background: linear-gradient(160deg, var(--color-section-glow), var(--color-section) 62%);
-		border-radius: 0 0 var(--radius-header) var(--radius-header);
-		padding: calc(20px + env(safe-area-inset-top)) 0 22px;
+		padding-top: env(safe-area-inset-top);
+		background: var(--md-surface);
 	}
 
 	.inner {
@@ -112,160 +107,150 @@
 	.bar {
 		display: flex;
 		align-items: center;
-		gap: 12px;
+		justify-content: flex-end;
+		gap: 4px;
+		height: 64px;
+		/* Icon buttons sit on the gutter by their glyph, not their 48px box. */
+		margin-inline: -12px;
 	}
-
-	.round {
-		flex: none;
-		display: grid;
-		text-decoration: none;
-		place-items: center;
-		width: 34px;
-		height: 34px;
-		border: 0;
-		border-radius: var(--radius-pill);
-		background: var(--on-section-fill);
-		color: var(--on-section);
-		cursor: pointer;
-	}
-	.round:hover {
-		background: color-mix(in srgb, var(--on-section) 18%, transparent);
-	}
-	@media (pointer: coarse) {
-		.round {
-			width: 44px;
-			height: 44px;
-		}
+	.back {
+		margin-right: auto;
+		color: var(--md-on-surface);
 	}
 
 	.titles {
-		flex: 1;
 		min-width: 0;
+		padding: 4px 0 20px;
 	}
 	.kicker {
-		color: var(--on-section-accent);
+		color: var(--md-primary);
+		margin-bottom: 4px;
 	}
 	.title {
 		margin: 0;
 		font-family: var(--font-heading);
-		font-weight: var(--font-heading-weight);
+		font-weight: 400;
 		font-size: var(--text-2xl);
-		letter-spacing: -0.025em;
-		line-height: 1.15;
-		color: var(--on-section);
+		line-height: 40px;
+		color: var(--md-on-surface);
+		overflow-wrap: anywhere;
 	}
 
 	/*
-	 * Training.
-	 *
-	 * The header stops being a title bar and becomes the instrument panel, so it
-	 * is pinned: a session clock you have to scroll up to read is a clock you
-	 * stop reading, and rest between sets is timed by the one number that goes
-	 * off screen first. Everything here exists to keep that panel short enough
-	 * to pin — the clocks share the title's row, the theme toggle steps out, and
-	 * the block's own padding tightens.
+	 * Training: pinned, on the surface container so the page visibly scrolls
+	 * under it.
+	 */
+	/*
+	 * The bottom 12px of the pinned bar is the page's own surface, not the
+	 * bar's grey. The open exercise card is that same grey, and without the
+	 * gap it slid up under the bar and the two ran together; with it, whatever
+	 * scrolls underneath disappears into the page color first. Being part of
+	 * the header, the gap is included in the height the workout screen measures
+	 * when it scrolls the next exercise into view.
 	 */
 	header.training {
+		--gap: 12px;
 		position: sticky;
 		top: 0;
 		z-index: 30;
-		padding: calc(18px + env(safe-area-inset-top)) 0 18px;
+		padding-bottom: calc(12px + var(--gap));
+		background: linear-gradient(
+			to bottom,
+			var(--md-surface-container) calc(100% - var(--gap)),
+			var(--md-surface) calc(100% - var(--gap))
+		);
+	}
+	header.training .inner {
+		padding-top: 12px;
 	}
 
 	.clocks {
-		flex: 1;
-		min-width: 0;
 		display: flex;
 		gap: 8px;
 	}
 	/*
 	 * Sized to be read at arm's length, mid-set, without leaning in — these two
-	 * numbers are the only reason the header is pinned at all, so the block is
-	 * deliberately about half as tall again as it needs to be to hold them.
+	 * numbers are the only reason the bar is pinned at all.
 	 */
 	.clock {
 		flex: 1;
 		min-width: 0;
-		background: var(--on-section-fill);
+		padding: 10px 16px 12px;
 		border-radius: var(--radius-lg);
-		padding: 9px 14px 11px;
+		background: var(--md-surface);
+		color: var(--md-on-surface);
 	}
 	.rest {
-		background: var(--on-section-fill-accent);
+		background: var(--md-tertiary-container);
+		color: var(--md-on-tertiary-container);
 	}
 	.clock-label {
-		color: var(--on-section-dim);
-		font-size: var(--text-xs);
-	}
-	.rest-label {
-		color: var(--on-section-accent);
+		opacity: 0.85;
 	}
 	.clock-value {
 		font-family: var(--font-heading);
-		font-size: 34px;
-		line-height: 1.1;
-		letter-spacing: -0.02em;
-		color: var(--on-section);
+		font-size: var(--text-3xl);
+		line-height: 44px;
 	}
-	/* Must not come from the page palette: accent-100 inverts to near-black in
-	   light mode, and this sits on the header block, which never inverts. */
-	.rest-value {
-		color: var(--on-section);
-	}
-	/* A session past an hour reads h:mm:ss — seven characters, which is two more
-	   than the clock is usually asked to hold. On the narrowest phones that is
-	   wider than half the row, so the numerals give a little back. */
+	/* A session past an hour reads h:mm:ss — seven characters. On the narrowest
+	   phones that is wider than half the row, so the numerals give a little back. */
 	@media (max-width: 380px) {
 		.clock-value {
-			font-size: 29px;
+			font-size: 30px;
 		}
 	}
 
+	/* M3 linear progress indicator: the fill and the track are separate
+	   rounded segments with a gap between them. */
 	.progress {
-		margin-top: 13px;
+		margin-top: 12px;
 		display: flex;
 		align-items: center;
-		gap: 10px;
+		gap: 12px;
 	}
 	.track {
 		flex: 1;
-		height: 9px;
+		height: 4px;
 		border-radius: var(--radius-pill);
-		background: var(--on-section-track);
+		background: var(--md-secondary-container);
 		overflow: hidden;
 	}
 	.fill {
 		height: 100%;
-		background: var(--on-section-accent);
+		background: var(--md-primary);
 		border-radius: var(--radius-pill);
 		transition: width 0.35s ease;
 	}
 	.progress-text {
 		flex: none;
-		font-size: var(--text-md);
-		color: var(--on-section-accent);
+		font-size: var(--text-sm);
+		font-weight: 500;
+		color: var(--md-on-surface-variant);
 	}
 
 	/*
-	 * Desktop. The block shrinks — 27px of title and 20px of air above it is
-	 * sized for a phone held at arm's length — and it stays put while the page
-	 * scrolls under it, which is what a window's title bar does. During a
-	 * workout that keeps the clocks and the progress bar on screen for the whole
-	 * session rather than only at the top of the page.
+	 * Desktop. The bar stays put while the page scrolls under it, which is what
+	 * a window's title bar does, and it tightens: a 32px headline under 64px of
+	 * air is sized for a phone held at arm's length.
 	 */
 	@media (min-width: 900px) and (pointer: fine) {
 		header {
 			position: sticky;
 			top: 0;
 			z-index: 30;
-			padding: 15px 0 17px;
+		}
+		.bar {
+			height: 52px;
+		}
+		.titles {
+			padding: 0 0 14px;
 		}
 		.title {
-			font-size: 23px;
+			font-size: 28px;
+			line-height: 36px;
 		}
-		/* A window has the width for bigger numerals still. */
 		.clock-value {
-			font-size: 38px;
+			font-size: 40px;
 		}
 	}
 </style>

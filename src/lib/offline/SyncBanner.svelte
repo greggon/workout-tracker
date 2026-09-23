@@ -61,22 +61,26 @@
 {/if}
 
 <style>
+	/* An inline M3 banner: a tonal container with a text-button action. */
 	.banner {
 		max-width: var(--shell-width);
 		margin: 0 auto 12px;
 		display: flex;
 		align-items: center;
-		gap: 10px;
-		padding: 9px 14px;
+		gap: 8px;
+		padding: 4px 8px 4px 16px;
+		min-height: 48px;
 		border-radius: var(--radius-md);
-		background: var(--color-neutral-900);
-		color: var(--color-neutral-300);
+		background: var(--md-surface-container-high);
+		color: var(--md-on-surface);
 		font-size: var(--text-md);
 	}
 	.warn {
-		background: var(--color-accent-900);
-		color: var(--color-accent-200);
-		box-shadow: inset 0 0 0 1px var(--color-accent-700);
+		background: var(--md-tertiary-container);
+		color: var(--md-on-tertiary-container);
+	}
+	.warn .act {
+		color: var(--md-on-tertiary-container);
 	}
 	.text {
 		flex: 1;

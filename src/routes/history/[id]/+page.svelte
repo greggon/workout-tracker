@@ -87,9 +87,8 @@
 		margin: 0;
 	}
 	.chart-card {
-		background: var(--color-surface);
+		background: var(--md-surface-container-low);
 		border-radius: var(--radius-lg);
-		box-shadow: var(--shadow-sm);
 		padding: 18px 14px 8px;
 	}
 	/* The table on the same surface as the chart above it: two readings of the
@@ -98,10 +97,9 @@
 	   poking out of the card on a narrow phone. */
 	.table-wrap {
 		overflow-x: auto;
-		padding: 2px 14px;
+		padding: 0 8px;
 		border-radius: var(--radius-lg);
-		background: var(--color-surface);
-		box-shadow: var(--shadow-sm);
+		background: var(--md-surface-container-low);
 	}
 	.right {
 		text-align: right;

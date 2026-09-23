@@ -14,7 +14,7 @@
 		<p class="text-muted">Finish a workout and every movement in it shows up here.</p>
 	</div>
 {:else}
-	<ul class="list">
+	<ul class="list-group">
 		{#each data.movements as m (m.movementId)}
 			<li>
 				<a class="row-card" href={resolve('/history/[id]', { id: m.movementId })}>
@@ -27,16 +27,14 @@
 						</span>
 					</span>
 					<svg
-						width="17"
-						height="17"
-						viewBox="0 0 256 256"
+						width="24"
+						height="24"
+						viewBox="0 0 24 24"
 						fill="currentColor"
 						class="chev"
 						aria-hidden="true"
 					>
-						<path
-							d="M181.7 133.7l-80 80a8 8 0 0 1-11.4-11.4L164.7 128 90.3 53.7a8 8 0 0 1 11.4-11.4l80 80a8 8 0 0 1 0 11.4Z"
-						/>
+						<path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
 					</svg>
 				</a>
 			</li>
@@ -45,32 +43,21 @@
 {/if}
 
 <style>
-	.list {
-		list-style: none;
-		margin: 0;
-		padding: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 10px;
-	}
 	.text {
 		flex: 1;
 		min-width: 0;
 	}
 	.name {
 		display: block;
-		font-family: var(--font-heading);
-		font-weight: var(--font-heading-weight);
-		font-size: var(--text-lg);
-		letter-spacing: -0.01em;
+		font-size: var(--text-base);
+		line-height: 24px;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 	.meta {
 		display: block;
-		font-size: var(--text-sm);
-		color: var(--color-neutral-500);
-		margin-top: 2px;
+		font-size: var(--text-md);
+		color: var(--md-on-surface-variant);
 	}
 </style>

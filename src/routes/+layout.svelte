@@ -46,7 +46,7 @@
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
 	<link
 		rel="stylesheet"
-		href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+		href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;8..144,500;8..144,600&display=swap"
 	/>
 </svelte:head>
 
@@ -77,7 +77,7 @@
 	</div>
 </div>
 
-<TabBar nextDayId={data.nextDayId} />
+<TabBar />
 
 <style>
 	/*
@@ -125,9 +125,9 @@
 		padding: var(--space-4) var(--gutter);
 		padding-left: max(var(--gutter), env(safe-area-inset-left));
 		padding-right: max(var(--gutter), env(safe-area-inset-right));
-		/* Carries the clearance main used to hold: screens end in action
-		   buttons that must sit above the home indicator. */
-		padding-bottom: calc(110px + env(safe-area-inset-bottom));
+		/* Clears the bottom navigation bar and the home indicator: screens end
+		   in action buttons that must not sit under either. */
+		padding-bottom: calc(var(--nav-height) + 16px + env(safe-area-inset-bottom));
 		background: linear-gradient(
 				to right,
 				transparent,
