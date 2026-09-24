@@ -18,6 +18,7 @@
 	import type { SessionInput } from '$lib/session-payload';
 	import SessionSummary from './SessionSummary.svelte';
 	import Fireworks from './Fireworks.svelte';
+	import VolumeEquivalent from './VolumeEquivalent.svelte';
 	import { useOffline } from '$lib/offline/context.svelte';
 	import { clearLive, loadLive, saveLive } from '$lib/offline/live';
 	import { useChrome } from '$lib/shell/chrome.svelte';
@@ -405,6 +406,7 @@
 					<div class="stat-value num">{session.loggedCount}</div>
 				</li>
 			</ul>
+			<VolumeEquivalent volume={loggedVolume} />
 			<div class="pending-actions">
 				<button class="btn btn-secondary" onclick={() => queue.drain()} disabled={saving}>
 					Try now
@@ -560,6 +562,7 @@
 	.pending-actions {
 		display: flex;
 		gap: 10px;
+		margin-top: 24px;
 	}
 	.pending-actions .btn {
 		text-decoration: none;
@@ -586,7 +589,7 @@
 		display: grid;
 		grid-template-columns: repeat(3, minmax(0, 1fr));
 		gap: 8px;
-		margin-bottom: 24px;
+		margin-bottom: 12px;
 	}
 	.stats > li {
 		min-width: 0;

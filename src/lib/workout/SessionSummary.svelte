@@ -3,6 +3,7 @@
 	import type { SessionSummary } from '$lib/server/sessions';
 	import { TOOL_SPEC } from '$lib/types';
 	import { formatVolume, formatWeight, isUnloaded, wholeMinutes } from '$lib/volume';
+	import VolumeEquivalent from './VolumeEquivalent.svelte';
 
 	type Props = {
 		summary: SessionSummary;
@@ -113,6 +114,8 @@
 		{/each}
 	</ul>
 
+	<VolumeEquivalent volume={summary.volume} />
+
 	<h2 class="section-label">
 		Volume · last {summary.history.length - 1}
 		{summary.dayKey} days + today
@@ -206,10 +209,12 @@
 	   `flex: 1` keeps them equal without the tracks a grid would impose: each card
 	   is its own box, and a five-figure volume shrinks its own type rather than
 	   widening a column that the other two then have to match. */
+	/* Tight to the Cybertrucks card under it; the section heading after that
+	   brings its own 28px, which also covers a workout with no card. */
 	.stats {
 		display: flex;
 		gap: 8px;
-		margin-bottom: 30px;
+		margin-bottom: 12px;
 	}
 	.stat {
 		flex: 1;
