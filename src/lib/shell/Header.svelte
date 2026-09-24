@@ -51,8 +51,8 @@
 				</div>
 			</div>
 		{:else}
-			<div class="bar">
-				{#if header.back}
+			{#if header.back}
+				<div class="bar">
 					<!--
 						Back is navigation, so it is a link: middle-click, long-press and
 						"open in new tab" all work, and it needs no JavaScript. Callers put
@@ -65,17 +65,20 @@
 							<path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20z" />
 						</svg>
 					</a>
-				{/if}
-				<!-- Off during a workout: the theme is not something you change
-				     mid-set. -->
-				<ThemeToggle />
-			</div>
+				</div>
+			{/if}
 
-			<div class="titles">
-				{#if header.kicker}
-					<div class="label kicker">{header.kicker}</div>
+			<div class="titles" class:top={!header.back}>
+				<div class="title-text">
+					{#if header.kicker}
+						<div class="label kicker">{header.kicker}</div>
+					{/if}
+					<h1 class="title">{header.title}</h1>
+				</div>
+				{#if header.themeToggle}
+					<!-- Only where the page asks for it; see PageHeader.themeToggle. -->
+					<ThemeToggle />
 				{/if}
-				<h1 class="title">{header.title}</h1>
 			</div>
 		{/if}
 
@@ -104,23 +107,37 @@
 		padding-right: max(var(--gutter), env(safe-area-inset-right));
 	}
 
+	/* Only drawn when there is a back link to put in it. */
 	.bar {
 		display: flex;
 		align-items: center;
-		justify-content: flex-end;
 		gap: 4px;
 		height: 64px;
 		/* Icon buttons sit on the gutter by their glyph, not their 48px box. */
 		margin-inline: -12px;
 	}
 	.back {
-		margin-right: auto;
 		color: var(--md-on-surface);
 	}
 
 	.titles {
+		display: flex;
+		align-items: center;
+		gap: 8px;
 		min-width: 0;
 		padding: 4px 0 20px;
+	}
+	/* No row above it, so the title takes the top padding itself. */
+	.titles.top {
+		padding-top: 28px;
+	}
+	.title-text {
+		flex: 1;
+		min-width: 0;
+	}
+	/* Its glyph, not its 48px box, lines up with the gutter. */
+	.titles :global(.toggle) {
+		margin-right: -12px;
 	}
 	.kicker {
 		color: var(--md-primary);
@@ -250,6 +267,9 @@
 		}
 		.titles {
 			padding: 0 0 14px;
+		}
+		.titles.top {
+			padding-top: 18px;
 		}
 		.title {
 			font-size: 28px;

@@ -6,7 +6,7 @@ import type { Actions, PageServerLoad } from './$types';
 import type { PageHeader } from '$lib/shell/page-header';
 
 export const load: PageServerLoad = async ({ locals }) => ({
-	header: { title: 'My Gear 🏋️' } satisfies PageHeader,
+	header: { title: 'My Gear 🏋️', themeToggle: true } satisfies PageHeader,
 	settings: {
 		barWeight: locals.user.barWeight,
 		ezBarWeight: locals.user.ezBarWeight,

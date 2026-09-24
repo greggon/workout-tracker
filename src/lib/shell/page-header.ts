@@ -26,4 +26,10 @@ export type PageHeader = {
 	 * as a plain string.
 	 */
 	back?: string | null;
+	/**
+	 * Puts the light/dark toggle at the end of the title row. Only Gear sets it:
+	 * the theme is a set-once preference, and it belongs with the app's other
+	 * settings rather than in the corner of every screen.
+	 */
+	themeToggle?: boolean;
 };
