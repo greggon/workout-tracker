@@ -17,6 +17,7 @@
 	import type { SessionSummary as SummaryView } from '$lib/server/sessions';
 	import type { SessionInput } from '$lib/session-payload';
 	import SessionSummary from './SessionSummary.svelte';
+	import Fireworks from './Fireworks.svelte';
 	import { useOffline } from '$lib/offline/context.svelte';
 	import { clearLive, loadLive, saveLive } from '$lib/offline/live';
 	import { useChrome } from '$lib/shell/chrome.svelte';
@@ -374,6 +375,9 @@
 </script>
 
 {#if session.finishedAt}
+	<!-- Outside the summary / pending switch below, so it plays once when the
+	     workout ends and is not restarted when the server's answer arrives. -->
+	<Fireworks />
 	{#if summary}
 		<SessionSummary {summary} {syncError} />
 	{:else}
