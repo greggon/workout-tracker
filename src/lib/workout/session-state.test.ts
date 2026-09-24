@@ -6,6 +6,7 @@ import {
 	movementsOf,
 	slotKey,
 	stepAfterLog,
+	tapReps,
 	WorkoutSession,
 	type SessionExercise
 } from './session.svelte';
@@ -359,10 +360,30 @@ describe('how long the screen waits before moving on', () => {
 		expect(ADVANCE_ON_COMMIT_MS).toBeGreaterThan(0);
 	});
 
-	it('does not make a deliberate tap wait around', () => {
-		// A tap on the check is unambiguous — it only needs long enough to see
-		// the tick land.
-		expect(ADVANCE_DELAY_MS.check).toBeLessThan(600);
-		expect(ADVANCE_DELAY_MS.check).toBeLessThan(ADVANCE_DELAY_MS.typed);
+	it('waits long enough after a tap for the next tap to take a rep off', () => {
+		// The first tap on the last chip completes the exercise; a set that fell
+		// short is more taps on the same chip. Moving on before those land would
+		// yank the card away mid-correction.
+		expect(ADVANCE_DELAY_MS.tap).toBeGreaterThanOrEqual(1000);
+		// …but a tap is still a finished gesture, unlike a number half typed.
+		expect(ADVANCE_DELAY_MS.tap).toBeLessThan(ADVANCE_DELAY_MS.typed);
+	});
+});
+
+describe('tapping a rep chip', () => {
+	it('logs the target on the first tap', () => {
+		expect(tapReps(undefined, 12)).toBe(12);
+	});
+
+	it('takes one rep off with each further tap', () => {
+		expect(tapReps(12, 12)).toBe(11);
+		expect(tapReps(11, 12)).toBe(10);
+		// Also below a number that was typed over the target.
+		expect(tapReps(15, 12)).toBe(14);
+	});
+
+	it('clears the set after zero, so a mistaken tap can be undone', () => {
+		expect(tapReps(1, 12)).toBe(0);
+		expect(tapReps(0, 12)).toBeNull();
 	});
 });

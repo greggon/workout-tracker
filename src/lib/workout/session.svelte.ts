@@ -190,16 +190,19 @@ export type NextStep = { kind: 'stay' } | { kind: 'open'; index: number } | { ki
 /** A step that actually moves the screen — everything except staying put. */
 export type Advance = Exclude<NextStep, { kind: 'stay' }>;
 
-/** How a set reached the log: the check button, or typed into the field. */
-export type LogSource = 'check' | 'typed';
+/** How a set reached the log: tapping its rep chip, or typing a number. */
+export type LogSource = 'tap' | 'typed';
 
 export type Logged = { completed: boolean; source: LogSource };
 
 /**
  * How long to wait before acting on a completed exercise.
  *
- * A tap on the check is one decisive gesture, so it only needs long enough to
- * see the tick land. Typing is not: reps go in a digit at a time, and an
+ * A tap on a rep chip logs the target, but the next tap on the same chip takes
+ * a rep off — so a set that fell two short is three quick taps, and the
+ * exercise is "complete" after the first of them. The wait has to outlast the
+ * gap between those taps, or the card would move on before the correction
+ * lands. Every further tap restarts it. Typing is similar: reps go in a digit at a time, and an
  * exercise is briefly complete at "1" on the way to "11". The wait has to
  * outlast the gap between two digits of someone wearing gloves with a phone
  * balanced on a bench — half a second does not, which is how a workout finished
@@ -209,9 +212,24 @@ export type Logged = { completed: boolean; source: LogSource };
  * where the lifter has genuinely stopped typing.
  */
 export const ADVANCE_DELAY_MS: Record<LogSource, number> = {
-	check: 350,
+	tap: 1500,
 	typed: 2500
 };
+
+/**
+ * What one tap on a rep chip writes.
+ *
+ * Unlogged → the target, because hitting it is the common case and should be
+ * one tap. Logged → one fewer, so a set that came up short is a tap per missed
+ * rep. At zero → cleared, so a set tapped by mistake can be tapped back to
+ * "not done" without a separate control. Going over the target is what the
+ * press-and-hold number field is for.
+ */
+export function tapReps(current: number | undefined, target: number): number | null {
+	if (current == null) return target;
+	if (current > 0) return current - 1;
+	return null;
+}
 
 /**
  * The wait once the lifter says they are finished typing — the keypad's Done

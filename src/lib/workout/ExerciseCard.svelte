@@ -7,6 +7,7 @@
 	import PlateDiagram from './PlateDiagram.svelte';
 	import {
 		movementsOf,
+		tapReps,
 		type LogSource,
 		type Logged,
 		type SessionExercise,
@@ -27,14 +28,13 @@
 		 * Fired after any set changes. `completed` is true only when this write is
 		 * what finished the exercise, so a later correction to a finished exercise
 		 * does not read as finishing it again; `source` says whether that came
-		 * from a tap or from a number still being typed.
+		 * from a tap or from a typed number.
 		 */
 		onLogged: (event: Logged) => void;
 		/**
-		 * Fired when the lifter is done entering a number — the keypad's Done key,
+		 * Fired when the lifter is done typing a number — the keypad's Done key,
 		 * or focus leaving the field. On a phone that is the real "I have finished
-		 * this set" signal; the timer behind onLogged is only a backstop for when
-		 * focus never leaves.
+		 * this set" signal; the timer behind onLogged is only a backstop.
 		 */
 		onCommit: () => void;
 	};
@@ -42,31 +42,48 @@
 	let { session, exercise, index, config, lastLogs, onOpen, onLogged, onCommit }: Props = $props();
 
 	const movements = $derived(movementsOf(exercise));
+	const paired = $derived(movements.length > 1);
 	const done = $derived(session.isExerciseDone(index));
 	/*
-	 * Open is "this is the exercise you are looking at", nothing more. It used to
-	 * exclude finished exercises, which meant a completed card could not be
-	 * reopened at all: tapping it set `active` and then refused to expand, so a
-	 * mistyped rep count was permanent for the rest of the workout.
+	 * Open is "this is the exercise you are looking at", nothing more — a
+	 * finished card can be reopened to fix a number.
 	 */
 	const open = $derived(session.active === index);
 	const loggedIn = $derived(session.loggedIn(index));
 	const slotCount = $derived(exercise.sets * movements.length);
+	const setIndexes = $derived([...Array(exercise.sets).keys()]);
 
 	const title = $derived(movements.map((m) => m.name).join('  →  '));
-	const summary = $derived(
-		`${exercise.sets} × ${exercise.reps} · ` +
-			`${movements.map((m) => formatWeight(m.weight)).join(' / ')} lb · ` +
-			movements.map((m) => TOOL_SPEC[m.tool].label.toLowerCase()).join(' / ')
-	);
 
-	const lastHint = $derived.by(() => {
-		const last = lastLogs[exercise.main.movementId];
-		if (!last) return 'first time';
-		return `${formatWeight(last.weight)} lb × ${last.reps} (${relativeDay(last.loggedAt)})`;
+	/** A letter per half of a superset: A for the main lift, B for its pair. */
+	const letter = (slot: number) => String.fromCharCode(65 + slot);
+
+	/**
+	 * Under the title. Open, the prescription; closed with sets logged, what was
+	 * actually done ("A 10 10 9  B 10 – –"), so a finished exercise can be read
+	 * back without opening it.
+	 */
+	const summary = $derived.by(() => {
+		if (open || loggedIn === 0) {
+			return (
+				`${paired ? 'Superset · ' : ''}${exercise.sets} × ${exercise.reps} · ` +
+				`${movements.map((m) => formatWeight(m.weight)).join(' / ')} lb · ` +
+				movements.map((m) => TOOL_SPEC[m.tool].label.toLowerCase()).join(' / ')
+			);
+		}
+		return movements
+			.map((_, slot) => {
+				const reps = setIndexes.map((s) => session.reps(index, s, slot) ?? '–').join(' ');
+				return paired ? `${letter(slot)} ${reps}` : reps;
+			})
+			.join('   ');
 	});
 
-	const setIndexes = $derived([...Array(exercise.sets).keys()]);
+	function lastFor(movementId: string): string | null {
+		const last = lastLogs[movementId];
+		if (!last) return null;
+		return `${formatWeight(last.weight)} × ${last.reps}, ${relativeDay(last.loggedAt)}`;
+	}
 
 	function record(setIndex: number, slot: number, reps: number | null, source: LogSource) {
 		const wasDone = session.isExerciseDone(index);
@@ -74,10 +91,90 @@
 		onLogged({ completed: !wasDone && session.isExerciseDone(index), source });
 	}
 
-	function onReps(setIndex: number, slot: number, value: string) {
+	/*
+	 * Rep chips.
+	 *
+	 * Tap: see tapReps — target, then one fewer per tap, then cleared.
+	 * Press and hold: the chip becomes a number field, for going over the
+	 * target or jumping straight to a number. A digit typed while a chip has
+	 * keyboard focus does the same, so the field is reachable without a
+	 * pointer.
+	 */
+	const HOLD_MS = 450;
+	let holdTimer: ReturnType<typeof setTimeout> | null = null;
+	/** Set when a hold opened the field, so the click that ends it is not a tap. */
+	let held = false;
+	/** The chip being typed into, as "set-slot". */
+	let editing = $state<string | null>(null);
+	let draft = $state('');
+
+	const chipKey = (setIndex: number, slot: number) => `${setIndex}-${slot}`;
+
+	function startEdit(setIndex: number, slot: number, initial?: string) {
+		const current = session.reps(index, setIndex, slot);
+		draft = initial ?? (current == null ? '' : String(current));
+		editing = chipKey(setIndex, slot);
+	}
+
+	function press(setIndex: number, slot: number) {
+		held = false;
+		release();
+		holdTimer = setTimeout(() => {
+			holdTimer = null;
+			held = true;
+			startEdit(setIndex, slot);
+		}, HOLD_MS);
+	}
+
+	function release() {
+		if (holdTimer !== null) clearTimeout(holdTimer);
+		holdTimer = null;
+	}
+
+	function tap(setIndex: number, slot: number) {
+		if (held) {
+			held = false;
+			return;
+		}
+		record(setIndex, slot, tapReps(session.reps(index, setIndex, slot), exercise.reps), 'tap');
+	}
+
+	function chipKeydown(event: KeyboardEvent, setIndex: number, slot: number) {
+		if (/^[0-9]$/.test(event.key)) {
+			event.preventDefault();
+			startEdit(setIndex, slot, event.key);
+		}
+	}
+
+	function commit(setIndex: number, slot: number, value: string) {
+		if (editing !== chipKey(setIndex, slot)) return;
+		editing = null;
 		const trimmed = value.trim();
 		record(setIndex, slot, trimmed === '' ? null : Number(trimmed), 'typed');
+		onCommit();
 	}
+
+	function fieldKeydown(event: KeyboardEvent) {
+		const field = event.currentTarget as HTMLInputElement;
+		// Enter, and the numeric keypad's Done, mean the number is finished.
+		if (event.key === 'Enter') field.blur();
+		if (event.key === 'Escape') {
+			editing = null;
+		}
+	}
+
+	/** Focuses the field as it appears, with its number selected to type over. */
+	function focusOnMount(node: HTMLInputElement) {
+		node.focus();
+		node.select();
+	}
+
+	function chipLabel(name: string, setIndex: number, value: number | undefined): string {
+		const state = value == null ? `not logged, target ${exercise.reps}` : `${value} reps`;
+		return `${name}, set ${setIndex + 1}: ${state}. Tap to log, tap again for one fewer, hold to type.`;
+	}
+
+	$effect(() => () => release());
 </script>
 
 <li class="card-wrap" class:open class:done data-exercise={index}>
@@ -86,7 +183,7 @@
 			{done ? '✓' : index + 1}
 		</span>
 		<span class="head-text">
-			<span class="name" class:struck={done && !open}>{title}</span>
+			<span class="name">{title}</span>
 			<span class="summary num">{summary}</span>
 		</span>
 		<span class="count num">{loggedIn}/{slotCount}</span>
@@ -94,119 +191,93 @@
 
 	{#if open}
 		<div class="body">
-			<div class="hints">
-				<span class="tag tag-accent">Last time · {lastHint}</span>
-				{#if exercise.note}
-					<span class="tag tag-outline">{exercise.note}</span>
-				{/if}
-			</div>
+			{#if exercise.note}
+				<span class="tag tag-outline note">{exercise.note}</span>
+			{/if}
 
-			<div class="loads">
-				<!--
-					Keyed by position, not by movement id. The array is [main] or [main,
-					pair], so position *is* the identity here — and a superset whose two
-					halves resolve to the same movement (pairing a lift with itself)
-					would produce two identical keys, which Svelte throws on in
-					production as well as in dev.
-				-->
-				{#each movements as movement, slot (slot)}
-					{@const load = loadingParts(movement.tool, movement.weight, config)}
-					<div class="load">
-						<div class="load-head">
-							<div class="load-text">
-								<div class="load-name">
-									<span class="load-movement">{movement.name}</span>
-									<span class="num load-total">- {load.total}</span>
-								</div>
-								{#if load.note}
-									<!-- Only what the drawing cannot say. The plate list itself is
-									     redundant beside a diagram with the numbers on it. -->
-									<div class="load-note num">{load.note}</div>
-								{/if}
-							</div>
+			<!--
+				Keyed by position, not by movement id. The array is [main] or [main,
+				pair], so position *is* the identity here — and a superset whose two
+				halves resolve to the same movement would produce two identical keys,
+				which Svelte throws on.
+			-->
+			{#each movements as movement, slot (slot)}
+				{@const load = loadingParts(movement.tool, movement.weight, config)}
+				{@const last = lastFor(movement.movementId)}
+				<div class="movement">
+					<div class="mv-head">
+						{#if paired}
+							<span class="letter" aria-hidden="true">{letter(slot)}</span>
+						{/if}
+						<div class="mv-text">
+							<!-- The name is the way to its history: safe to leave mid-workout,
+							     the session is on the device and resumes where it was. -->
 							<a
-								class="btn btn-ghost history"
+								class="mv-name"
 								href="{resolve('/history/[id]', {
 									id: movement.movementId
 								})}?back={encodeURIComponent(page.url.pathname)}"
 							>
-								History
+								{#if paired}<span class="visually-hidden"
+										>{letter(slot)}:
+									</span>{/if}{movement.name}
+								<svg
+									width="16"
+									height="16"
+									viewBox="0 0 24 24"
+									fill="currentColor"
+									aria-hidden="true"
+								>
+									<path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
+								</svg>
 							</a>
+							<span class="mv-meta num">
+								{load.total}{load.note ? ` · ${load.note}` : ''}{last ? ` · Last ${last}` : ''}
+							</span>
 						</div>
-						<!-- The drawing gets the whole row: its plates now carry their own
-						     numbers, and a number is only worth writing if it can be read. -->
 						<span class="art">
 							<PlateDiagram tool={movement.tool} weight={movement.weight} {config} />
 						</span>
 					</div>
-				{/each}
-			</div>
 
-			<div class="sets">
-				{#each setIndexes as setIndex (setIndex)}
-					<div class="set">
-						<div class="set-head">
-							<span class="set-label">Set {setIndex + 1}</span>
-							<span class="set-target num">{exercise.reps} reps</span>
-						</div>
-
-						{#each movements as movement, slot (slot)}
+					<!-- One chip per set, all on one row. -->
+					<div class="reps" class:indented={paired} class:dense={exercise.sets > 5}>
+						{#each setIndexes as setIndex (setIndex)}
 							{@const value = session.reps(index, setIndex, slot)}
-							<div class="entry">
-								{#if movements.length > 1}
-									<!--
-										Only a superset needs naming here: with one movement the card's
-										own title already says it, and repeating it once per set is how
-										"Low Incline Wide Grip Bench Press" ended up setting the width
-										of the card. The weight is gone from here for the same reason:
-										it is on the summary line and beside the diagram already.
-									-->
-									<span class="entry-name">{movement.name}</span>
-								{:else}
-									<span class="entry-name"></span>
-								{/if}
+							{#if editing === chipKey(setIndex, slot)}
 								<input
-									class="input num entry-reps"
-									class:logged={value != null && value !== exercise.reps}
+									class="rep rep-field num"
 									type="number"
 									inputmode="numeric"
 									min="0"
-									placeholder={String(exercise.reps)}
-									value={value ?? ''}
-									oninput={(e) => onReps(setIndex, slot, e.currentTarget.value)}
-									onblur={onCommit}
-									onkeydown={(e) => {
-										// Enter, and the numeric keypad's Done, mean the number is
-										// finished. Blurring closes the keypad and commits through
-										// the same path as tapping away.
-										if (e.key === 'Enter') e.currentTarget.blur();
-									}}
-									aria-label="Reps completed, {movement.name}, set {setIndex + 1}"
+									value={draft}
+									use:focusOnMount
+									onblur={(e) => commit(setIndex, slot, e.currentTarget.value)}
+									onkeydown={fieldKeydown}
+									aria-label="Reps, {movement.name}, set {setIndex + 1}"
 								/>
+							{:else}
 								<button
 									type="button"
-									class="btn check"
-									class:checked={value === exercise.reps}
-									onclick={() => record(setIndex, slot, exercise.reps, 'check')}
-									title="Hit all {exercise.reps} reps"
-									aria-label="Hit all {exercise.reps} reps, {movement.name}, set {setIndex + 1}"
+									class="rep num"
+									class:logged={value != null}
+									class:under={value != null && value < exercise.reps}
+									onpointerdown={() => press(setIndex, slot)}
+									onpointerup={release}
+									onpointerleave={release}
+									onpointercancel={release}
+									oncontextmenu={(e) => e.preventDefault()}
+									onclick={() => tap(setIndex, slot)}
+									onkeydown={(e) => chipKeydown(e, setIndex, slot)}
+									aria-label={chipLabel(movement.name, setIndex, value)}
 								>
-									<svg
-										width="22"
-										height="22"
-										viewBox="0 0 24 24"
-										fill="none"
-										stroke="currentColor"
-										stroke-width="3"
-									>
-										<path d="m5 13 5 5L20 7" />
-									</svg>
+									{value ?? exercise.reps}
 								</button>
-							</div>
+							{/if}
 						{/each}
 					</div>
-				{/each}
-			</div>
+				</div>
+			{/each}
 		</div>
 	{/if}
 </li>
@@ -291,10 +362,6 @@
 		letter-spacing: -0.01em;
 		overflow-wrap: anywhere;
 	}
-	.struck {
-		text-decoration: line-through;
-		color: var(--color-neutral-500);
-	}
 	.summary {
 		display: block;
 		font-size: var(--text-sm);
@@ -310,187 +377,152 @@
 	.body {
 		padding: 12px 16px 16px;
 		display: grid;
-		gap: 14px;
+		gap: 16px;
+	}
+	.note {
+		justify-self: start;
 	}
 
-	.hints {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 8px;
-		align-items: center;
-	}
-
-	.loads {
+	.movement {
 		display: grid;
 		gap: 10px;
+		min-width: 0;
 	}
-	.load {
+	.mv-head {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		min-width: 0;
+	}
+	/* The superset's A / B. */
+	.letter {
+		flex: none;
 		display: grid;
+		place-items: center;
+		width: 22px;
+		height: 22px;
+		border-radius: 6px;
+		font-size: var(--text-sm);
+		font-weight: 600;
+		color: var(--md-on-primary);
+		background: var(--md-primary);
+	}
+	.mv-text {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+	}
+	.mv-name {
+		display: inline-flex;
+		align-items: center;
+		gap: 2px;
+		min-width: 0;
+		align-self: flex-start;
+		max-width: 100%;
+		font-size: var(--text-md);
+		font-weight: 500;
+		line-height: 20px;
+		color: var(--md-on-surface);
+		text-decoration: none;
+	}
+	.mv-name svg {
+		flex: none;
+		color: var(--md-on-surface-variant);
+	}
+	.mv-name:hover {
+		color: var(--md-primary);
+	}
+	.mv-meta {
+		font-size: var(--text-sm);
+		color: var(--md-on-surface-variant);
+	}
+	/* Small beside the name: its plates carry their own numbers. */
+	.art {
+		flex: none;
+		display: block;
+		width: 104px;
+	}
+
+	/*
+	 * The chips share the row. Five sets fit at the full 48px on the narrowest
+	 * phone; past that each chip gives up width so the row never wraps.
+	 */
+	.reps {
+		display: flex;
 		gap: 6px;
 		min-width: 0;
 	}
-	.load-head {
-		display: flex;
-		align-items: baseline;
-		gap: 12px;
-		min-width: 0;
+	/* Under the name, past the A / B letter, so the chips line up by set across
+	   the two halves of a superset. */
+	.reps.indented {
+		padding-left: 32px;
 	}
-	/*
-	 * Small, and against the left edge with everything else in the card. At full
-	 * width it dominated the row — and there are two of these in a superset —
-	 * while all it has to do is show the shape of the stack and the number on
-	 * each plate.
-	 */
-	.art {
-		display: block;
-		width: 100%;
-		max-width: 150px;
-	}
-	.load-text {
-		min-width: 0;
-	}
-	/*
-	 * One line, always.
-	 *
-	 * The weight is the half worth protecting: wrapping it put the "lb" on a
-	 * line of its own under the name. So the total never breaks and never
-	 * shrinks, and the name gives way to an ellipsis instead — it is printed in
-	 * full as the card's title two rows up, so nothing is actually lost here.
-	 */
-	.load-name {
-		display: flex;
-		align-items: baseline;
-		gap: 5px;
-		min-width: 0;
-		font-size: var(--text-md);
-		font-family: var(--font-heading);
-		font-weight: var(--font-heading-weight);
-		color: var(--color-text);
-	}
-	.load-movement {
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	/* The movement's total reads as part of its name, so it takes the same ink
-	   and the same weight; the drawing below is what carries the emphasis. */
-	.load-total {
-		flex: none;
-		white-space: nowrap;
-	}
-	/* What the drawing cannot say: "per side", "bar only", "2.5 lb short". */
-	.load-note {
-		font-size: var(--text-sm);
-		color: var(--md-on-surface-variant);
-		margin-top: 1px;
-	}
-	/* Safe to leave mid-workout: the session is on the device, and coming back
-	   restores it exactly where it was. */
-	.history {
-		flex: none;
-		margin-left: auto;
-		font-size: var(--text-md);
-		text-decoration: none;
+	.reps.dense {
+		gap: 4px;
 	}
 
-	.sets {
-		display: grid;
-		gap: 8px;
-	}
-	/* Sets sit straight on the card's fill; the check buttons carry which are
-	   done, so the rows themselves need no box. */
-	.set {
-		display: grid;
-		gap: 8px;
-	}
-	.set-head {
-		display: flex;
-		align-items: baseline;
-		gap: 8px;
-	}
-	.set-label {
-		font-size: var(--text-sm);
-		font-weight: 500;
-		color: var(--md-on-surface);
-		margin-right: auto;
-	}
-	.set-target {
-		font-size: var(--text-sm);
-		color: var(--md-on-surface-variant);
-	}
-
-	/*
-	 * The two controls are the same size on purpose: they are alternatives, and
-	 * both are aimed at with a thumb between sets. One height for both: M3's
-	 * 56px text field on touch, 48px with a pointer.
-	 */
-	.entry {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		/* A grid item takes its content as its automatic minimum; this says the
-		   row may be as narrow as the track it sits in. */
+	.rep {
+		flex: 0 1 48px;
 		min-width: 0;
-		--entry-h: 48px;
-		--entry-w: 88px;
-	}
-	@media (pointer: coarse) {
-		.entry {
-			--entry-h: 56px;
-		}
-	}
-	/*
-	 * Wraps rather than truncating.
-	 *
-	 * It was a single nowrap line with an ellipsis, which is only as good as the
-	 * shrinking working — and on a phone a long name was pushing this row, and
-	 * with it the whole card, past the width of the page. Wrapping text has a
-	 * min-content width of its longest word, and `anywhere` drops even that to a
-	 * single character, so nothing in this row can force it wider than the space
-	 * it is given. A name that needs two lines gets two lines.
-	 */
-	.entry-name {
-		flex: 1;
-		min-width: 0;
-		font-size: var(--text-md);
-		line-height: 1.25;
-		overflow-wrap: anywhere;
-	}
-	/* The field takes the page's surface so it reads as a place to type on
-	   the card's grey. */
-	.entry-reps {
-		flex: none;
-		width: var(--entry-w);
-		height: var(--entry-h);
-		text-align: center;
-		background: var(--md-surface);
-	}
-	/*
-	 * A logged set always shows in exactly one place: here when the number is off
-	 * target, and on the check when it is not. Lighting both — which is what
-	 * tapping the check did, since it fills the field with the target — said the
-	 * same thing twice and read as two separate states.
-	 */
-	.entry-reps.logged {
-		border-color: var(--md-primary);
-		box-shadow: inset 0 0 0 1px var(--md-primary);
-		background: color-mix(in srgb, var(--md-primary) 8%, transparent);
-	}
-
-	/* An M3 filled tonal icon button, round, that fills with the primary once
-	   the set is at its prescribed reps. */
-	.check {
-		flex: none;
-		width: var(--entry-h);
-		height: var(--entry-h);
+		height: 48px;
 		padding: 0;
-		color: var(--md-on-secondary-container);
-		background: var(--md-secondary-container);
+		border: 1px solid var(--md-outline-variant);
+		border-radius: var(--radius-md);
+		background: var(--md-surface);
+		color: var(--md-outline);
+		font-family: inherit;
+		font-size: 18px;
+		font-weight: 500;
+		cursor: pointer;
+		touch-action: manipulation;
+		-webkit-touch-callout: none;
+		-webkit-user-select: none;
+		user-select: none;
+		transition:
+			background-color 0.12s ease,
+			color 0.12s ease;
 	}
-	/* Filled at the prescribed reps, however they got there — typed or tapped. */
-	.check.checked {
+	.dense .rep {
+		font-size: 15px;
+	}
+	/* At the target. */
+	.rep.logged {
+		border-color: transparent;
 		color: var(--md-on-primary);
 		background: var(--md-primary);
+	}
+	/* Short of it: a different color, so a missed rep reads at a glance. */
+	.rep.under {
+		color: var(--md-on-tertiary-container);
+		background: var(--md-tertiary-container);
+		font-weight: 600;
+	}
+	.rep-field {
+		flex-basis: 56px;
+		border: 2px solid var(--md-primary);
+		color: var(--md-on-surface);
+		background: var(--md-surface-container-lowest);
+		text-align: center;
+		cursor: text;
+		-webkit-user-select: text;
+		user-select: text;
+		outline: none;
+		-moz-appearance: textfield;
+		appearance: textfield;
+	}
+	.rep-field::-webkit-outer-spin-button,
+	.rep-field::-webkit-inner-spin-button {
+		-webkit-appearance: none;
+		margin: 0;
+	}
+
+	.visually-hidden {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		white-space: nowrap;
 	}
 </style>

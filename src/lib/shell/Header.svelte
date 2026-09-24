@@ -172,10 +172,15 @@
 	 * Sized to be read at arm's length, mid-set, without leaning in — these two
 	 * numbers are the only reason the bar is pinned at all.
 	 */
+	/* Label and number on one line, so the pinned bar stays short. */
 	.clock {
 		flex: 1;
 		min-width: 0;
-		padding: 10px 16px 12px;
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 8px;
+		padding: 6px 14px 8px;
 		border-radius: var(--radius-lg);
 		background: var(--md-surface);
 		color: var(--md-on-surface);
@@ -189,14 +194,15 @@
 	}
 	.clock-value {
 		font-family: var(--font-heading);
-		font-size: var(--text-3xl);
-		line-height: 44px;
+		font-size: 30px;
+		line-height: 40px;
 	}
 	/* A session past an hour reads h:mm:ss — seven characters. On the narrowest
-	   phones that is wider than half the row, so the numerals give a little back. */
+	   phones that plus its label is wider than half the row, so the numerals
+	   give a little back. */
 	@media (max-width: 380px) {
 		.clock-value {
-			font-size: 30px;
+			font-size: 26px;
 		}
 	}
 
