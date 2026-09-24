@@ -454,9 +454,10 @@
 	</ul>
 
 	<!--
-		The two ways a workout can end, pinned to the bottom while you train:
-		finishing is the filled button and takes the width; quitting is a text
-		button in the error color, well to its side.
+		The two ways a workout can end, after the last exercise and deliberately
+		not pinned: a Finish button riding along at the bottom of the screen is
+		one stray tap away all session. Finishing is the filled button and takes
+		the width; quitting is a text button in the error color, well to its side.
 	-->
 	<div class="actions">
 		<button
@@ -517,15 +518,10 @@
 	}
 
 	.actions {
-		position: sticky;
-		bottom: 0;
-		z-index: 20;
 		display: flex;
 		align-items: center;
 		gap: 8px;
-		margin: 24px calc(-1 * var(--gutter)) 0;
-		padding: 12px var(--gutter) calc(12px + env(safe-area-inset-bottom));
-		background: var(--md-surface-container);
+		margin-top: 24px;
 	}
 	.act {
 		/* "Discard 7 sets?" is longer than the label it replaces. */
@@ -545,10 +541,6 @@
 
 	@media (min-width: 900px) and (pointer: fine) {
 		.actions {
-			position: static;
-			margin-inline: 0;
-			padding: 0;
-			background: none;
 			flex-direction: row-reverse;
 			justify-content: flex-end;
 		}
