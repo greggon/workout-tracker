@@ -19,6 +19,8 @@ export type LiveSession = {
 	pausedAt?: number | null;
 	/** Time already spent in earlier pauses. */
 	pausedMs?: number;
+	/** The day's exercise ids in order, so an edited day can be matched up. */
+	exerciseIds?: string[];
 	savedAt: number;
 };
 

@@ -181,14 +181,48 @@ export class WorkoutSession {
 		/** Absent from snapshots saved before pausing existed. */
 		pausedAt?: number | null;
 		pausedMs?: number;
+		/**
+		 * The day's exercise ids, in order, when the snapshot was taken. Logged
+		 * sets are keyed by position, and the day can be edited mid-workout —
+		 * reordered, an exercise added or dropped — so positions are matched
+		 * back up by id. Absent from older snapshots, which are taken as-is.
+		 */
+		exerciseIds?: string[];
 	}): void {
 		this.id = saved.sessionId;
 		this.startedAt = saved.startedAt;
 		this.lastAt = saved.lastAt;
-		this.active = saved.active;
-		this.log = { ...saved.log };
+		const moved = saved.exerciseIds ? this.remap(saved.exerciseIds) : null;
+		this.log = moved ? moved.log(saved.log) : { ...saved.log };
+		this.active = moved ? moved.index(saved.active) : saved.active;
 		this.pausedAt = saved.pausedAt ?? null;
 		this.pausedMs = saved.pausedMs ?? 0;
+	}
+
+	/**
+	 * Maps a snapshot taken against an earlier version of the day onto this
+	 * one. A set whose exercise is gone, or that falls past the exercise's
+	 * current set count or movement count, is dropped rather than landing on
+	 * something else.
+	 */
+	private remap(savedIds: string[]) {
+		/** Where the exercise that was at `old` is now; -1 if it is gone. */
+		const position = (old: number): number =>
+			this.exercises.findIndex((e) => e.id === savedIds[old]);
+		const index = (old: number): number => Math.max(0, position(old));
+		const log = (saved: Record<string, number>): Record<string, number> => {
+			const next: Record<string, number> = {};
+			for (const [key, reps] of Object.entries(saved)) {
+				const [oldIndex, setIndex, slot] = key.split('|').map(Number);
+				const newIndex = position(oldIndex);
+				if (newIndex < 0) continue;
+				const exercise = this.exercises[newIndex];
+				if (setIndex >= exercise.sets || slot >= movementsOf(exercise).length) continue;
+				next[slotKey(newIndex, setIndex, slot)] = reps;
+			}
+			return next;
+		};
+		return { index, log };
 	}
 
 	pause(at = Date.now()): void {

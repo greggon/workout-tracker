@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { goto, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
@@ -134,7 +135,8 @@
 			active: session.active,
 			log: { ...session.log },
 			pausedAt: session.pausedAt,
-			pausedMs: session.pausedMs
+			pausedMs: session.pausedMs,
+			exerciseIds: session.exercises.map((e) => e.id)
 		};
 		void saveLive(store, snapshot);
 	});
@@ -294,6 +296,52 @@
 		session.pause();
 	}
 
+	/*
+	 * The kebab menu beside the day's title: Edit day, and Pause / Resume.
+	 * Closes on a choice, on Escape, or on a tap anywhere else; the arrow keys
+	 * move between its items, and focus goes back to the kebab on closing.
+	 */
+	let menuOpen = $state(false);
+	let menuWrap = $state<HTMLElement>();
+	let menu = $state<HTMLElement>();
+	let kebab = $state<HTMLElement>();
+
+	function menuItems(): HTMLElement[] {
+		return menu ? [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')] : [];
+	}
+
+	function openMenu() {
+		menuOpen = true;
+		// Focus the first item once the menu has rendered.
+		void tick().then(() => menuItems()[0]?.focus());
+	}
+
+	function closeMenu(returnFocus = true) {
+		menuOpen = false;
+		if (returnFocus) kebab?.focus();
+	}
+
+	function togglePause() {
+		closeMenu();
+		if (session.paused) session.resume();
+		else pause();
+	}
+
+	function menuKeydown(event: KeyboardEvent) {
+		const items = menuItems();
+		const at = items.indexOf(document.activeElement as HTMLElement);
+		if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+			event.preventDefault();
+			const step = event.key === 'ArrowDown' ? 1 : -1;
+			items[(at + step + items.length) % items.length]?.focus();
+		} else if (event.key === 'Home' || event.key === 'End') {
+			event.preventDefault();
+			items[event.key === 'Home' ? 0 : items.length - 1]?.focus();
+		} else if (event.key === 'Tab') {
+			closeMenu(false);
+		}
+	}
+
 	function finish() {
 		if (session.finishedAt) return;
 		session.finish();
@@ -438,7 +486,12 @@
 
 <svelte:window
 	onkeydown={(e) => {
-		if (confirmFinish && e.key === 'Escape') confirmFinish = false;
+		if (e.key !== 'Escape') return;
+		if (menuOpen) closeMenu();
+		else if (confirmFinish) confirmFinish = false;
+	}}
+	onpointerdown={(e) => {
+		if (menuOpen && !menuWrap?.contains(e.target as Node)) closeMenu(false);
 	}}
 />
 
@@ -484,39 +537,99 @@
 	{/if}
 {:else}
 	<div class="head">
-		<h2>{day.key} day</h2>
-		<span class="text-muted day-title">{day.title}</span>
+		<div class="head-title">
+			<h2>{day.key} day</h2>
+			<span class="text-muted day-title">{day.title}</span>
+		</div>
 		<!--
-			A link, not a button calling goto(): it opens in a new tab, it works
-			before hydration, and leaving mid-workout is safe either way — the
-			session is written to IndexedDB after every change, so coming back
-			resumes it with the clock still running.
+			The day's rarer actions, behind a kebab at the end of the title's line:
+			two labelled buttons beside a long day title had nowhere tidy to go.
 		-->
-		<a class="btn btn-secondary edit" href={resolve('/routine/[id]', { id: day.id })}>
-			<svg
-				width="15"
-				height="15"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="1.8"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				aria-hidden="true"
+		<div class="menu-wrap" bind:this={menuWrap}>
+			<button
+				type="button"
+				class="btn btn-icon kebab"
+				aria-label="Workout options"
+				aria-haspopup="menu"
+				aria-expanded={menuOpen}
+				aria-controls="workout-menu"
+				bind:this={kebab}
+				onclick={() => (menuOpen ? closeMenu() : openMenu())}
 			>
-				<path d="M4 20h4L18.5 9.5a2.8 2.8 0 0 0-4-4L4 16v4Z" />
-				<path d="M13.5 6.5l4 4" />
-			</svg>
-			Edit day
-		</a>
-		{#if !session.paused}
-			<button type="button" class="btn btn-tonal pause" onclick={pause}>
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-					<path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" />
+				<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+					<circle cx="12" cy="5" r="2" />
+					<circle cx="12" cy="12" r="2" />
+					<circle cx="12" cy="19" r="2" />
 				</svg>
-				Pause
 			</button>
-		{/if}
+			{#if menuOpen}
+				<div
+					class="menu"
+					id="workout-menu"
+					role="menu"
+					aria-label="Workout options"
+					tabindex="-1"
+					bind:this={menu}
+					onkeydown={menuKeydown}
+				>
+					<!--
+						A link, not a button calling goto(): it opens in a new tab, it works
+						before hydration, and leaving mid-workout is safe either way — the
+						session is written to IndexedDB after every change, so coming back
+						resumes it with the clock still running.
+					-->
+					<a
+						class="menu-item"
+						role="menuitem"
+						href="{resolve('/routine/[id]', { id: day.id })}?back={encodeURIComponent(
+							resolve('/workout/[id]', { id: day.id })
+						)}"
+						onclick={() => (menuOpen = false)}
+					>
+						<svg
+							width="20"
+							height="20"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.8"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<path d="M4 20h4L18.5 9.5a2.8 2.8 0 0 0-4-4L4 16v4Z" />
+							<path d="M13.5 6.5l4 4" />
+						</svg>
+						Edit day
+					</a>
+					<button type="button" class="menu-item" role="menuitem" onclick={togglePause}>
+						{#if session.paused}
+							<svg
+								width="20"
+								height="20"
+								viewBox="0 0 24 24"
+								fill="currentColor"
+								aria-hidden="true"
+							>
+								<path d="M8 5.5v13l10-6.5z" />
+							</svg>
+							Resume workout
+						{:else}
+							<svg
+								width="20"
+								height="20"
+								viewBox="0 0 24 24"
+								fill="currentColor"
+								aria-hidden="true"
+							>
+								<path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" />
+							</svg>
+							Pause workout
+						{/if}
+					</button>
+				</div>
+			{/if}
+		</div>
 	</div>
 
 	{#if session.paused}
@@ -618,13 +731,84 @@
 {/if}
 
 <style>
+	/*
+	 * The title on the left, the kebab on the right of its first line. The row
+	 * never wraps: a long day title wraps within itself, beside the kebab.
+	 */
 	.head {
 		display: flex;
-		align-items: baseline;
-		gap: 10px;
-		flex-wrap: wrap;
-		padding-top: 18px;
+		align-items: flex-start;
+		gap: 12px;
+		/* No top padding: the pinned bar's own gap and the page's padding
+		   already separate this from the clocks. */
 		margin-bottom: 18px;
+	}
+	.head-title {
+		flex: 1 1 auto;
+		min-width: 0;
+		display: flex;
+		align-items: baseline;
+		flex-wrap: wrap;
+		column-gap: 10px;
+	}
+	/* The kebab sits at the end of the title's first line, its glyph on the
+	   gutter rather than its 48px box. */
+	.menu-wrap {
+		position: relative;
+		flex: none;
+		align-self: flex-start;
+		margin: -6px -12px 0 0;
+	}
+	.kebab {
+		color: var(--md-on-surface);
+	}
+	/* An M3 menu: a raised surface of 48px rows with leading icons. */
+	.menu {
+		position: absolute;
+		top: calc(100% + 4px);
+		right: 8px;
+		z-index: 25;
+		min-width: 200px;
+		padding: 8px 0;
+		border-radius: var(--radius-sm);
+		background: var(--md-surface-container);
+		box-shadow: var(--shadow-md);
+		transform-origin: top right;
+		animation: menu-in 0.12s ease-out;
+	}
+	.menu:focus {
+		outline: none;
+	}
+	.menu-item {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		width: 100%;
+		min-height: 48px;
+		padding: 0 16px 0 12px;
+		border: 0;
+		background: none;
+		color: var(--md-on-surface);
+		font: inherit;
+		font-size: var(--text-md);
+		text-align: left;
+		text-decoration: none;
+		cursor: pointer;
+	}
+	.menu-item svg {
+		flex: none;
+		color: var(--md-on-surface-variant);
+	}
+	.menu-item:hover,
+	.menu-item:focus-visible {
+		background: color-mix(in srgb, var(--md-on-surface) 8%, transparent);
+		outline: none;
+	}
+	@keyframes menu-in {
+		from {
+			opacity: 0;
+			transform: scale(0.92);
+		}
 	}
 	h2 {
 		font-size: 28px;
@@ -633,19 +817,6 @@
 	}
 	.day-title {
 		font-size: var(--text-md);
-	}
-	/* Pushed to the end of the row: it is the one thing here you are not
-	   reading, so it should not sit between the day and its title. */
-	.edit {
-		margin-left: auto;
-		align-self: center;
-		font-size: var(--text-md);
-		text-decoration: none;
-	}
-
-	.pause {
-		align-self: center;
-		padding-inline: 16px 20px;
 	}
 	.paused {
 		display: flex;

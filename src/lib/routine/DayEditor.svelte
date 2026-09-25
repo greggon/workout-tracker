@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { loadingParts, type LoadingConfig } from '$lib/plates';
 	import PlateDiagram from '$lib/workout/PlateDiagram.svelte';
@@ -21,6 +22,8 @@
 		day: { title: string; exercises: Exercise[] };
 		catalog: { name: string; defaultTool: Tool }[];
 		loading: LoadingConfig;
+		/** Where Save and Cancel go: the workout, Up Next, or the routine list. */
+		back: string;
 		form: { message?: string } | null;
 	};
 
@@ -30,7 +33,7 @@
 	 * user's hands when the page data revalidates — so switching days has to
 	 * remount rather than reassign.
 	 */
-	let { day, catalog, loading, form }: Props = $props();
+	let { day, catalog, loading, back, form }: Props = $props();
 
 	/** One half of an exercise: the main movement, or its superset partner. */
 	type MovementFields = { name: string; tool: Tool; weight: number };
@@ -210,7 +213,7 @@
 						class="btn btn-ghost history"
 						href="{resolve('/history/[id]', {
 							id: movementId
-						})}?back={encodeURIComponent(resolve('/routine'))}"
+						})}?back={encodeURIComponent(page.url.pathname + page.url.search)}"
 					>
 						History
 					</a>
@@ -248,6 +251,7 @@
 	<h2 class="section-label">Exercises</h2>
 
 	<input type="hidden" name="count" value={rows.length} />
+	<input type="hidden" name="back" value={back} />
 
 	<ul class="rows">
 		{#each rows as row, i (row.id ?? `new-${i}`)}
@@ -339,7 +343,9 @@
 	     used to sit below the last exercise, a screen or two of scrolling
 	     away from whatever you had just changed. -->
 	<div class="actions">
-		<a class="btn btn-secondary" href={resolve('/routine')} onclick={() => guard.pass()}>Cancel</a>
+		<!-- Already checked by the load; see safeBack. -->
+		<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+		<a class="btn btn-secondary" href={back} onclick={() => guard.pass()}>Cancel</a>
 		<button class="btn btn-primary save" type="submit">Save day</button>
 	</div>
 </form>

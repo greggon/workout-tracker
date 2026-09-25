@@ -458,3 +458,37 @@ describe('pausing', () => {
 		expect(session.pausedMs).toBe(0);
 	});
 });
+
+describe('coming back to a workout after editing its day', () => {
+	const base = { sessionId: 's', startedAt: 1, lastAt: 1, active: 1 };
+
+	it('follows each set to its exercise when the day was reordered', () => {
+		// Saved with the single ('b') second; the day now has it first.
+		const reordered = new WorkoutSession([exercises()[1], exercises()[0]]);
+		reordered.adopt({
+			...base,
+			exerciseIds: ['a', 'b'],
+			log: { '0|0|0': 10, '0|0|1': 9, '1|2|0': 12 }
+		});
+		expect(reordered.log).toEqual({ '1|0|0': 10, '1|0|1': 9, '0|2|0': 12 });
+		// Still on the same exercise, now in first place.
+		expect(reordered.active).toBe(0);
+	});
+
+	it('drops sets for an exercise that was removed, or past its new set count', () => {
+		const [superset, single] = exercises();
+		const trimmed = new WorkoutSession([{ ...single, sets: 2 }]);
+		trimmed.adopt({
+			...base,
+			exerciseIds: [superset.id, single.id],
+			log: { '0|0|0': 10, '1|0|0': 12, '1|2|0': 12 }
+		});
+		expect(trimmed.log).toEqual({ '0|0|0': 12 });
+	});
+
+	it('takes an older snapshot without ids as it is', () => {
+		const session = fresh();
+		session.adopt({ ...base, log: { '1|0|0': 12 } });
+		expect(session.log).toEqual({ '1|0|0': 12 });
+	});
+});

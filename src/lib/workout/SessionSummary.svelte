@@ -163,7 +163,13 @@
 	<div class="actions">
 		<a class="btn btn-secondary" href={resolve('/')}>Back to Up Next</a>
 		{#if summary.dayId}
-			<a class="btn btn-primary update" href={resolve('/routine/[id]', { id: summary.dayId })}>
+			<!-- The workout is over, so the way back is Up Next, not the summary. -->
+			<a
+				class="btn btn-primary update"
+				href="{resolve('/routine/[id]', { id: summary.dayId })}?back={encodeURIComponent(
+					resolve('/')
+				)}"
+			>
 				Update routine
 			</a>
 		{/if}

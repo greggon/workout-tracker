@@ -4,11 +4,19 @@ import { getDb } from '$lib/server/db';
 import { days, movements } from '$lib/server/db/schema';
 import { listDays } from '$lib/server/routine';
 import { saveDay, type ExerciseInput } from '$lib/server/routine-edit';
+import { safeBack } from '$lib/back';
 import type { PageHeader } from '$lib/shell/page-header';
 import { TOOLS, type Tool } from '$lib/types';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, locals }) => {
+/**
+ * Where Save and Cancel go. The editor is opened from a running workout (which
+ * should get you back to it, sets and clocks intact), from the summary after
+ * one (back to Up Next), or from the routine list — the default.
+ */
+const DEFAULT_BACK = '/routine';
+
+export const load: PageServerLoad = async ({ params, locals, url }) => {
 	const day = listDays(getDb(), locals.user.id).find((d) => d.id === params.id);
 	if (!day) error(404, 'No such day');
 
@@ -27,8 +35,9 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		header: {
 			kicker: 'Edit day',
 			title: `${day.key} day`,
-			back: '/routine'
+			back: safeBack(url.searchParams.get('back'), DEFAULT_BACK)
 		} satisfies PageHeader,
+		back: safeBack(url.searchParams.get('back'), DEFAULT_BACK),
 		day,
 		catalog,
 		loading: {
@@ -80,6 +89,8 @@ export const actions: Actions = {
 		} catch (e) {
 			return fail(400, { message: (e as Error).message });
 		}
-		redirect(303, '/routine');
+		// The form's action URL carries no query string, so the way back comes
+		// in as a field.
+		redirect(303, safeBack(form.get('back'), DEFAULT_BACK));
 	}
 };
