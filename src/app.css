@@ -798,6 +798,25 @@ textarea.input {
 	color: var(--md-on-surface);
 }
 
+/* — rep chips — */
+/*
+ * A row of RepChips, one per set. Five sets fit at the full 48px on the
+ * narrowest phone; past that each chip gives up width so the row never wraps.
+ */
+.rep-row {
+	display: flex;
+	gap: 6px;
+	min-width: 0;
+}
+/* Past a superset's A / B letter, so the chips line up by set across its two
+   halves. */
+.rep-row.indented {
+	padding-left: 32px;
+}
+.rep-row.dense {
+	gap: 4px;
+}
+
 /* — tables — */
 .table {
 	width: 100%;
