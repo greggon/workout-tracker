@@ -47,6 +47,14 @@ export class WorkoutSession {
 	/** Reps logged, keyed by slot. */
 	log = $state<Record<string, number>>({});
 	finishedAt = $state<number | null>(null);
+	/**
+	 * When the workout was paused, or null while it is running. Paused, both
+	 * clocks stand still: stepping away for an hour should not read as an
+	 * hour-long session or an hour of rest.
+	 */
+	pausedAt = $state<number | null>(null);
+	/** Time spent paused in earlier pauses, kept out of the session's length. */
+	pausedMs = $state(0);
 
 	constructor(exercises: SessionExercise[]) {
 		this.exercises = exercises;
@@ -65,8 +73,17 @@ export class WorkoutSession {
 		return this.totalSlots === 0 ? 0 : this.loggedCount / this.totalSlots;
 	}
 
+	get paused(): boolean {
+		return this.pausedAt !== null;
+	}
+
+	/** "Now", as far as the clocks are concerned: frozen while paused. */
+	private get clockNow(): number {
+		return this.pausedAt ?? this.now;
+	}
+
 	get elapsedMs(): number {
-		return Math.max(0, this.now - this.startedAt);
+		return Math.max(0, this.clockNow - this.startedAt - this.pausedMs);
 	}
 
 	/**
@@ -80,7 +97,7 @@ export class WorkoutSession {
 	 */
 	get restMs(): number {
 		if (this.loggedCount === 0) return 0;
-		return Math.max(0, this.now - this.lastAt);
+		return Math.max(0, this.clockNow - this.lastAt);
 	}
 
 	get complete(): boolean {
@@ -123,6 +140,8 @@ export class WorkoutSession {
 	 * that the design has no way to express.
 	 */
 	logSet(exerciseIndex: number, setIndex: number, slot: number, reps: number | null): void {
+		// Logging a set is the clearest sign the break is over.
+		this.resume();
 		const key = slotKey(exerciseIndex, setIndex, slot);
 		const next = { ...this.log };
 		if (reps === null || !Number.isFinite(reps)) {
@@ -159,21 +178,46 @@ export class WorkoutSession {
 		lastAt: number;
 		active: number;
 		log: Record<string, number>;
+		/** Absent from snapshots saved before pausing existed. */
+		pausedAt?: number | null;
+		pausedMs?: number;
 	}): void {
 		this.id = saved.sessionId;
 		this.startedAt = saved.startedAt;
 		this.lastAt = saved.lastAt;
 		this.active = saved.active;
 		this.log = { ...saved.log };
+		this.pausedAt = saved.pausedAt ?? null;
+		this.pausedMs = saved.pausedMs ?? 0;
+	}
+
+	pause(at = Date.now()): void {
+		if (this.pausedAt !== null || this.finishedAt !== null) return;
+		this.pausedAt = at;
+	}
+
+	/**
+	 * Ends a pause. The break comes out of the session's length, and the rest
+	 * clock picks up where it stopped — moving the last set forward by the
+	 * length of the break is what makes it read as if no time had passed.
+	 */
+	resume(at = Date.now()): void {
+		if (this.pausedAt === null) return;
+		const gap = Math.max(0, at - this.pausedAt);
+		this.pausedMs += gap;
+		this.lastAt += gap;
+		this.pausedAt = null;
 	}
 
 	finish(): void {
+		// Finishing from a pause counts the pause as a pause, not as training.
+		this.resume();
 		this.finishedAt = Date.now();
 	}
 
 	get durationMins(): number {
-		const end = this.finishedAt ?? this.now;
-		return Math.max(1, Math.round((end - this.startedAt) / 60_000));
+		const end = this.finishedAt ?? this.clockNow;
+		return Math.max(1, Math.round((end - this.startedAt - this.pausedMs) / 60_000));
 	}
 }
 

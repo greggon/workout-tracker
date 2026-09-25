@@ -388,3 +388,73 @@ describe('tapping a rep chip', () => {
 		expect(tapReps(0, 12)).toBeNull();
 	});
 });
+
+describe('pausing', () => {
+	const MIN = 60_000;
+
+	/** A session 10 minutes in, with a set logged 2 minutes ago. */
+	function underway() {
+		const session = fresh();
+		const start = session.startedAt;
+		session.logSet(0, 0, 0, 10);
+		session.lastAt = start + 8 * MIN;
+		session.now = start + 10 * MIN;
+		return { session, start };
+	}
+
+	it('stops both clocks', () => {
+		const { session, start } = underway();
+		session.pause(start + 10 * MIN);
+		session.now = start + 70 * MIN;
+		expect(session.paused).toBe(true);
+		expect(session.elapsedMs).toBe(10 * MIN);
+		expect(session.restMs).toBe(2 * MIN);
+	});
+
+	it('leaves the break out of the session and picks rest up where it stopped', () => {
+		const { session, start } = underway();
+		session.pause(start + 10 * MIN);
+		session.resume(start + 70 * MIN);
+		session.now = start + 71 * MIN;
+		expect(session.paused).toBe(false);
+		expect(session.elapsedMs).toBe(11 * MIN);
+		expect(session.restMs).toBe(3 * MIN);
+	});
+
+	it('adds up more than one pause', () => {
+		const { session, start } = underway();
+		session.pause(start + 10 * MIN);
+		session.resume(start + 20 * MIN);
+		session.pause(start + 30 * MIN);
+		session.resume(start + 45 * MIN);
+		expect(session.pausedMs).toBe(25 * MIN);
+	});
+
+	it('resumes on its own when a set is logged', () => {
+		const { session } = underway();
+		// Logging uses the real clock, so the pause has to be in the past.
+		session.pause(Date.now() - 5 * MIN);
+		session.logSet(0, 0, 1, 10);
+		expect(session.paused).toBe(false);
+		expect(session.pausedMs).toBeGreaterThanOrEqual(5 * MIN);
+	});
+
+	it('keeps the break out of the finished duration', () => {
+		const { session, start } = underway();
+		session.pause(start + 10 * MIN);
+		session.resume(start + 70 * MIN);
+		session.finishedAt = start + 80 * MIN;
+		expect(session.durationMins).toBe(20);
+	});
+
+	it('comes back paused from a saved snapshot, and from an older one without it', () => {
+		const session = fresh();
+		const base = { sessionId: 's', startedAt: 1, lastAt: 1, active: 0, log: {} };
+		session.adopt({ ...base, pausedAt: 500, pausedMs: 1000 });
+		expect(session.pausedAt).toBe(500);
+		expect(session.pausedMs).toBe(1000);
+		session.adopt(base);
+		expect(session.paused).toBe(false);
+		expect(session.pausedMs).toBe(0);
+	});
+});

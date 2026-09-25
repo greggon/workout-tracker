@@ -40,9 +40,9 @@
 				first. The day and its title are the first thing on the page below,
 				so the headline steps out to keep the panel short enough to pin.
 			-->
-			<div class="clocks">
+			<div class="clocks" class:paused={chrome.paused}>
 				<div class="clock">
-					<div class="label clock-label">Session</div>
+					<div class="label clock-label">{chrome.paused ? 'Paused' : 'Session'}</div>
 					<div class="num clock-value">{chrome.sessionClock}</div>
 				</div>
 				<div class="clock rest">
@@ -208,6 +208,14 @@
 	}
 	.clock-label {
 		opacity: 0.85;
+	}
+	/* Stopped clocks look stopped: the numbers step back, the label says why. */
+	.paused .clock-value {
+		opacity: 0.5;
+	}
+	.paused .clock:first-child .clock-label {
+		opacity: 1;
+		font-weight: 600;
 	}
 	.clock-value {
 		font-family: var(--font-heading);

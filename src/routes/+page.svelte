@@ -1,8 +1,38 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { useOffline } from '$lib/offline/context.svelte';
+	import { loadPaused, type LiveSession } from '$lib/offline/live';
+	import { clock } from '$lib/workout/session.svelte';
 	import { formatMinutes, formatVolume, relativeDay } from '$lib/volume';
 
 	let { data } = $props();
+
+	/*
+	 * A workout paused earlier, offered back at the top of the screen. It lives
+	 * only on this device, so it is read after the page loads rather than
+	 * coming from the server with everything else.
+	 */
+	const { store } = useOffline();
+	let paused = $state<LiveSession | null>(null);
+
+	$effect(() => {
+		let cancelled = false;
+		void loadPaused(store).then((saved) => {
+			if (!cancelled) paused = saved;
+		});
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	/** The paused workout's day — gone if the day was deleted since. */
+	const pausedDay = $derived(paused ? data.days.find((d) => d.id === paused!.dayId) : undefined);
+	const pausedMeta = $derived.by(() => {
+		if (!paused || paused.pausedAt == null) return '';
+		const sets = Object.keys(paused.log).length;
+		const inFor = clock(paused.pausedAt - paused.startedAt - (paused.pausedMs ?? 0));
+		return `${inFor} in · ${sets} set${sets === 1 ? '' : 's'} logged`;
+	});
 
 	const upNext = $derived(data.days[0] ?? null);
 	const later = $derived(data.days.slice(1));
@@ -25,6 +55,23 @@
 </script>
 
 <svelte:head><title>Workout</title></svelte:head>
+
+{#if paused && pausedDay}
+	<section class="paused" aria-label="Paused workout">
+		<span class="badge paused-badge">{pausedDay.key}</span>
+		<span class="paused-text">
+			<span class="paused-title">{pausedDay.key} day paused</span>
+			<span class="paused-meta num">{pausedMeta}</span>
+		</span>
+		<!-- ?resume tells the workout screen to unpause as it opens. -->
+		<a class="btn btn-primary" href="{resolve('/workout/[id]', { id: pausedDay.id })}?resume=1">
+			<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+				<path d="M8 5.5v13l10-6.5z" />
+			</svg>
+			Resume
+		</a>
+	</section>
+{/if}
 
 {#if !upNext}
 	<div class="card">
@@ -103,6 +150,35 @@
 {/if}
 
 <style>
+	/* The in-workout paused card's colors, so the two read as the same thing. */
+	.paused {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		margin-bottom: 24px;
+		padding: 12px 12px 12px 16px;
+		border-radius: var(--radius-lg);
+		color: var(--md-on-tertiary-container);
+		background: var(--md-tertiary-container);
+	}
+	.paused-badge {
+		color: var(--md-tertiary-container);
+		background: var(--md-on-tertiary-container);
+	}
+	.paused-text {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+	}
+	.paused-title {
+		font-size: var(--text-base);
+		font-weight: 500;
+	}
+	.paused-meta {
+		font-size: var(--text-sm);
+	}
+
 	.stats,
 	.chips {
 		list-style: none;

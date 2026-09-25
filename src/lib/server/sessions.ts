@@ -80,7 +80,11 @@ export function saveSession(db: Db, userId: string, input: SessionInput): SaveOu
 
 		const endedAt = new Date(input.endedAt);
 		const startedAt = new Date(input.startedAt);
-		const durationMins = Math.max(1, Math.round((input.endedAt - input.startedAt) / 60_000));
+		// Time spent paused is not training time; the timestamps stay the real ones.
+		const durationMins = Math.max(
+			1,
+			Math.round((input.endedAt - input.startedAt - (input.pausedMs ?? 0)) / 60_000)
+		);
 
 		tx.insert(sessions)
 			.values({

@@ -21,6 +21,8 @@ export class Chrome {
 	restClock = $state<string | null>(null);
 	/** Sets completed, 0 to 1. Null hides the bar. */
 	progress = $state<number | null>(null);
+	/** The workout is paused: the clocks are stopped and say so. */
+	paused = $state(false);
 
 	/** Routes call this on unmount so chrome never outlives the screen. */
 	clear() {
@@ -28,6 +30,7 @@ export class Chrome {
 		this.restClock = null;
 		this.progress = null;
 		this.progressText = '';
+		this.paused = false;
 	}
 }
 

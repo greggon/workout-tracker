@@ -15,6 +15,10 @@ export type LiveSession = {
 	lastAt: number;
 	active: number;
 	log: Record<string, number>;
+	/** Set while the workout is paused. Absent from older snapshots. */
+	pausedAt?: number | null;
+	/** Time already spent in earlier pauses. */
+	pausedMs?: number;
 	savedAt: number;
 };
 
@@ -22,6 +26,11 @@ const KEY = 'current';
 
 /** Abandoned sessions older than this are not worth offering to resume. */
 export const STALE_AFTER_MS = 12 * 60 * 60 * 1000;
+/**
+ * A paused session was put down on purpose, to be picked up later — so it
+ * keeps for longer than one that was simply left, measured from the pause.
+ */
+export const PAUSED_STALE_AFTER_MS = 48 * 60 * 60 * 1000;
 
 export async function saveLive(
 	store: OfflineStore,
@@ -45,10 +54,25 @@ export async function loadLive(
 	now = Date.now()
 ): Promise<LiveSession | null> {
 	const saved = await store.get<LiveSession>('live', KEY);
-	if (!saved) return null;
-
-	if (saved.dayId !== dayId || now - saved.savedAt > STALE_AFTER_MS) {
-		return null;
-	}
+	if (!saved || saved.dayId !== dayId || isStale(saved, now)) return null;
 	return saved;
+}
+
+/**
+ * The paused workout, whichever day it is for — what the home screen offers
+ * to resume. Null when nothing is paused, or the pause has gone stale.
+ */
+export async function loadPaused(
+	store: OfflineStore,
+	now = Date.now()
+): Promise<LiveSession | null> {
+	const saved = await store.get<LiveSession>('live', KEY);
+	if (!saved || saved.pausedAt == null || isStale(saved, now)) return null;
+	return saved;
+}
+
+function isStale(saved: LiveSession, now: number): boolean {
+	return saved.pausedAt != null
+		? now - saved.pausedAt > PAUSED_STALE_AFTER_MS
+		: now - saved.savedAt > STALE_AFTER_MS;
 }

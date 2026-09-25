@@ -27,6 +27,12 @@ export type SessionInput = {
 	dayId: string;
 	startedAt: number;
 	endedAt: number;
+	/**
+	 * Time the workout spent paused, which the stored duration leaves out. The
+	 * two timestamps stay the real start and end. Optional: sessions queued
+	 * offline before pausing existed do not carry it.
+	 */
+	pausedMs?: number;
 	logs: SetLogInput[];
 };
 
@@ -65,6 +71,16 @@ export function parseSessionPayload(body: unknown): ParseResult {
 		return { ok: false, error: 'Missing or invalid timestamps' };
 	}
 	if (raw.endedAt < raw.startedAt) return { ok: false, error: 'Session ended before it started' };
+	const pausedMs = raw.pausedMs;
+	if (
+		pausedMs !== undefined &&
+		(typeof pausedMs !== 'number' ||
+			!Number.isFinite(pausedMs) ||
+			pausedMs < 0 ||
+			pausedMs > raw.endedAt - raw.startedAt)
+	) {
+		return { ok: false, error: 'Invalid paused time' };
+	}
 	if (!Array.isArray(raw.logs)) return { ok: false, error: 'Missing logs' };
 	if (raw.logs.length === 0) return { ok: false, error: 'A session needs at least one set' };
 	if (raw.logs.length > MAX_LOGS) return { ok: false, error: `More than ${MAX_LOGS} sets` };
@@ -124,6 +140,7 @@ export function parseSessionPayload(body: unknown): ParseResult {
 			dayId: raw.dayId,
 			startedAt: raw.startedAt,
 			endedAt: raw.endedAt,
+			...(pausedMs ? { pausedMs } : {}),
 			logs
 		}
 	};

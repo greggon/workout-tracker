@@ -1,7 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { SessionInput } from '$lib/session-payload';
 import { SyncQueue, type QueuedSession, type Submit } from './queue.svelte';
-import { loadLive, saveLive, clearLive, STALE_AFTER_MS } from './live';
+import {
+	loadLive,
+	loadPaused,
+	saveLive,
+	clearLive,
+	PAUSED_STALE_AFTER_MS,
+	STALE_AFTER_MS
+} from './live';
 import { memoryStore, type OfflineStore } from './store';
 import { backoffMs, classifyResponse } from './sync';
 
@@ -234,6 +241,26 @@ describe('the workout in progress', () => {
 		const later = Date.now() + STALE_AFTER_MS + 1000;
 		// Being asked to resume last Tuesday is worse than being asked nothing.
 		expect(await loadLive(store, 'day-b', later)).toBeNull();
+	});
+
+	it('keeps a paused workout well past the usual limit, but not forever', async () => {
+		const pausedAt = Date.now();
+		await saveLive(store, { ...snapshot, pausedAt, pausedMs: 0 });
+		// Stepped away for the evening: still there the next morning.
+		const nextMorning = pausedAt + STALE_AFTER_MS + 60 * 60_000;
+		expect(await loadLive(store, 'day-b', nextMorning)).toMatchObject({ pausedAt });
+		expect(await loadLive(store, 'day-b', pausedAt + PAUSED_STALE_AFTER_MS + 1000)).toBeNull();
+	});
+
+	it('is offered on the home screen only while it is paused', async () => {
+		await saveLive(store, snapshot);
+		expect(await loadPaused(store)).toBeNull();
+
+		const pausedAt = Date.now();
+		await saveLive(store, { ...snapshot, pausedAt, pausedMs: 0 });
+		// Whichever day it is for: the home screen does not know which to ask about.
+		expect(await loadPaused(store)).toMatchObject({ dayId: 'day-b', pausedAt });
+		expect(await loadPaused(store, pausedAt + PAUSED_STALE_AFTER_MS + 1000)).toBeNull();
 	});
 
 	it('is cleared once the workout is queued', async () => {

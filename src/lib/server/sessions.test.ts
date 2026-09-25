@@ -156,6 +156,13 @@ describe('saveSession', () => {
 		saveSession(db, userId, payload({ endedAt: START + 1000 }));
 		expect(db.select().from(sessions).get()!.durationMins).toBe(1);
 	});
+
+	it('leaves time spent paused out of the duration, but keeps the real timestamps', () => {
+		saveSession(db, userId, payload({ pausedMs: 30 * 60_000 }));
+		const stored = db.select().from(sessions).get()!;
+		expect(stored.durationMins).toBe(22);
+		expect(stored.endedAt.getTime()).toBe(START + 52 * 60_000);
+	});
 });
 
 describe('summarizeSession', () => {
@@ -223,6 +230,22 @@ describe('parseSessionPayload', () => {
 
 	it('accepts a well-formed payload', () => {
 		expect(parseSessionPayload(body()).ok).toBe(true);
+	});
+
+	it('accepts a paused time, and a payload queued before there was one', () => {
+		const paused = parseSessionPayload({ ...body(), pausedMs: 60_000 });
+		expect(paused.ok && paused.value.pausedMs).toBe(60_000);
+		const older = parseSessionPayload(body());
+		expect(older.ok && older.value.pausedMs).toBeUndefined();
+	});
+
+	it('rejects a paused time that is negative or longer than the session', () => {
+		expect(parseSessionPayload({ ...body(), pausedMs: -1 })).toMatchObject({ ok: false });
+		expect(parseSessionPayload({ ...body(), pausedMs: 53 * 60_000 })).toMatchObject({
+			ok: false,
+			error: /paused/
+		});
+		expect(parseSessionPayload({ ...body(), pausedMs: 'a while' })).toMatchObject({ ok: false });
 	});
 
 	it('rejects the shapes that are not a session', () => {

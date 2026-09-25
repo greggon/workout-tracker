@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, replaceState } from '$app/navigation';
+	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import ExerciseCard from '$lib/workout/ExerciseCard.svelte';
 	import {
@@ -103,12 +104,15 @@
 	$effect(() => {
 		let cancelled = false;
 		void loadLive(store, day.id).then((saved) => {
-			if (cancelled || !saved) {
-				restored = true;
-				return;
-			}
-			session.adopt(saved);
+			if (cancelled) return;
+			if (saved) session.adopt(saved);
 			restored = true;
+			// Arrived from the home screen's Resume button: pick up where it left
+			// off, then drop the flag so a reload does not resume again.
+			if (page.url.searchParams.has('resume')) {
+				session.resume();
+				replaceState(resolve('/workout/[id]', { id: day.id }), page.state);
+			}
 		});
 		return () => {
 			cancelled = true;
@@ -128,7 +132,9 @@
 			startedAt: session.startedAt,
 			lastAt: session.lastAt,
 			active: session.active,
-			log: { ...session.log }
+			log: { ...session.log },
+			pausedAt: session.pausedAt,
+			pausedMs: session.pausedMs
 		};
 		void saveLive(store, snapshot);
 	});
@@ -150,6 +156,7 @@
 		chrome.sessionClock = clock(session.elapsedMs);
 		chrome.restClock = clock(session.restMs);
 		chrome.progress = session.progress;
+		chrome.paused = session.paused;
 	});
 	/* Takes the clocks back down on the way out, however the screen is left. */
 	$effect(() => () => chrome.clear());
@@ -160,7 +167,8 @@
 	 * visibility change rather than once at the start.
 	 */
 	$effect(() => {
-		if (session.finishedAt) return;
+		// Paused, the phone is allowed to sleep: that is the point of pausing.
+		if (session.finishedAt || session.paused) return;
 		let sentinel: WakeLockSentinel | null = null;
 		let cancelled = false;
 
@@ -213,6 +221,7 @@
 			dayId: day.id,
 			startedAt: session.startedAt,
 			endedAt: session.finishedAt ?? Date.now(),
+			pausedMs: session.pausedMs,
 			logs
 		};
 	}
@@ -272,6 +281,17 @@
 		quitting = true;
 		await clearLive(store);
 		await goto(resolve('/'));
+	}
+
+	/**
+	 * Stepping away mid-workout. The clocks stop, nothing moves on by itself,
+	 * and the pause is saved with the rest of the session, so closing the app
+	 * and coming back hours later still finds it paused.
+	 */
+	function pause() {
+		disarmQuit();
+		cancelAdvance();
+		session.pause();
 	}
 
 	function finish() {
@@ -489,7 +509,34 @@
 			</svg>
 			Edit day
 		</a>
+		{#if !session.paused}
+			<button type="button" class="btn btn-tonal pause" onclick={pause}>
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+					<path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" />
+				</svg>
+				Pause
+			</button>
+		{/if}
 	</div>
+
+	{#if session.paused}
+		<!-- In place of the button, at the top of the list: the first thing
+		     seen on coming back. Logging a set resumes too. -->
+		<div class="paused" role="status">
+			<div class="paused-text">
+				<span class="paused-title">Workout paused</span>
+				<span class="paused-meta num">
+					{clock(session.elapsedMs)} so far · the clocks are stopped
+				</span>
+			</div>
+			<button type="button" class="btn btn-primary resume" onclick={() => session.resume()}>
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+					<path d="M8 5.5v13l10-6.5z" />
+				</svg>
+				Resume
+			</button>
+		</div>
+	{/if}
 
 	<ul class="cards">
 		{#each session.exercises as exercise, index (exercise.id)}
@@ -594,6 +641,37 @@
 		align-self: center;
 		font-size: var(--text-md);
 		text-decoration: none;
+	}
+
+	.pause {
+		align-self: center;
+		padding-inline: 16px 20px;
+	}
+	.paused {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		margin-bottom: 12px;
+		padding: 12px 12px 12px 16px;
+		border-radius: var(--radius-lg);
+		color: var(--md-on-tertiary-container);
+		background: var(--md-tertiary-container);
+	}
+	.paused-text {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+	}
+	.paused-title {
+		font-size: var(--text-base);
+		font-weight: 500;
+	}
+	.paused-meta {
+		font-size: var(--text-sm);
+	}
+	.resume {
+		flex: none;
 	}
 
 	.cards,
