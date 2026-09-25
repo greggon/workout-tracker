@@ -281,6 +281,36 @@
 	}
 
 	/**
+	 * The Finish button. With every set logged it finishes; with any left, it
+	 * asks first. The button sits right where a thumb lands when it misses a rep
+	 * chip, and finishing early is not something the screen can take back.
+	 * Finishing on its own after the last set never asks — by then nothing is
+	 * missing.
+	 */
+	let confirmFinish = $state(false);
+	const unlogged = $derived(session.totalSlots - session.loggedCount);
+
+	function pressFinish() {
+		if (session.complete) {
+			finish();
+			return;
+		}
+		disarmQuit();
+		cancelAdvance();
+		confirmFinish = true;
+	}
+
+	function finishAnyway() {
+		confirmFinish = false;
+		finish();
+	}
+
+	/** Focuses the safe choice as the prompt opens. */
+	function focusOnMount(node: HTMLElement) {
+		node.focus();
+	}
+
+	/**
 	 * Advance past a finished exercise, and end the day when none are left.
 	 *
 	 * The move waits — how long depends on whether it was tapped or typed, see
@@ -374,6 +404,12 @@
 		return total;
 	});
 </script>
+
+<svelte:window
+	onkeydown={(e) => {
+		if (confirmFinish && e.key === 'Escape') confirmFinish = false;
+	}}
+/>
 
 {#if session.finishedAt}
 	<!-- Outside the summary / pending switch below, so it plays once when the
@@ -480,10 +516,47 @@
 				Quit
 			{/if}
 		</button>
-		<button class="btn btn-primary act finish" onclick={finish} disabled={saving}>
+		<button class="btn btn-primary act finish" onclick={pressFinish} disabled={saving}>
 			{saving ? 'Saving…' : 'Finish workout'}
 		</button>
 	</div>
+
+	{#if confirmFinish}
+		<!--
+			Markup order is keep-going → finish. On a phone the actions stack
+			confirm-first, which leaves "Keep going" at the bottom: where the thumb
+			that just hit Finish by mistake is most likely to land again.
+		-->
+		<div class="dialog-backdrop">
+			<div
+				class="dialog"
+				role="alertdialog"
+				aria-modal="true"
+				aria-labelledby="finish-title"
+				aria-describedby="finish-text"
+			>
+				<h2 class="dialog-title" id="finish-title">Finish with sets left?</h2>
+				<p class="text-muted finish-text" id="finish-text">
+					{unlogged} of {session.totalSlots} set{session.totalSlots === 1 ? '' : 's'}
+					{unlogged === 1 ? 'is' : 'are'} not logged yet. Finishing now saves the workout without
+					{unlogged === 1 ? 'it' : 'them'}.
+				</p>
+				<div class="dialog-actions">
+					<button
+						type="button"
+						class="btn btn-secondary"
+						onclick={() => (confirmFinish = false)}
+						use:focusOnMount
+					>
+						Keep going
+					</button>
+					<button type="button" class="btn btn-primary" onclick={finishAnyway}>
+						Finish anyway
+					</button>
+				</div>
+			</div>
+		</div>
+	{/if}
 {/if}
 
 <style>
@@ -554,6 +627,11 @@
 			flex: none;
 			min-width: 200px;
 		}
+	}
+
+	.finish-text {
+		margin: 0;
+		font-size: var(--text-md);
 	}
 
 	.pending {
