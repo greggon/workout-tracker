@@ -68,7 +68,8 @@ export function movementHistory(
 						sessionId: setLogs.sessionId,
 						tool: setLogs.tool,
 						weight: setLogs.weight,
-						reps: setLogs.reps
+						reps: setLogs.reps,
+						warmup: setLogs.warmup
 					})
 					.from(setLogs)
 					.where(
@@ -101,11 +102,14 @@ export function movementHistory(
 		const entry = bySession.get(log.sessionId);
 		if (!entry) continue;
 		tool ??= log.tool;
+		// Warm-ups are weight moved, so they count toward volume — but the
+		// working weight, top set and set count describe the working sets.
+		entry.volume += setVolume({ tool: log.tool, weight: log.weight }, log.reps);
+		if (log.warmup) continue;
 		entry.weight = Math.max(entry.weight, log.weight);
 		entry.topSet = Math.max(entry.topSet, log.reps);
 		entry.sets += 1;
 		entry.reps += log.reps;
-		entry.volume += setVolume({ tool: log.tool, weight: log.weight }, log.reps);
 	}
 
 	// Oldest first, so the chart reads left to right.

@@ -111,7 +111,17 @@ export const dayExercises = sqliteTable(
 
 		sets: integer('sets').notNull(),
 		reps: integer('reps').notNull(),
-		note: text('note').notNull().default('')
+		note: text('note').notNull().default(''),
+		/**
+		 * Warm-up sets before the working sets, for the main movement: each its
+		 * own weight and reps, lightest first. Empty for most exercises — they
+		 * are optional. JSON rather than a table: they are only ever read and
+		 * written whole, with the exercise they belong to.
+		 */
+		warmups: text('warmups', { mode: 'json' })
+			.$type<{ weight: number; reps: number }[]>()
+			.notNull()
+			.default(sql`'[]'`)
 	},
 	(t) => [index('day_exercises_day_position_idx').on(t.dayId, t.position)]
 );
@@ -172,6 +182,12 @@ export const setLogs = sqliteTable(
 		setIndex: integer('set_index').notNull(),
 		/** 0 = main movement, 1 = the superset pair. */
 		slot: integer('slot').notNull(),
+		/**
+		 * A warm-up set rather than a working one. Warm-ups count toward volume
+		 * like any other set; they are numbered on their own (`setIndex` 0, 1, 2…
+		 * among the warm-ups), so the flag is part of what makes a set unique.
+		 */
+		warmup: integer('warmup', { mode: 'boolean' }).notNull().default(false),
 
 		tool: text('tool').$type<Tool>().notNull(),
 		weight: real('weight').notNull(),
@@ -181,7 +197,7 @@ export const setLogs = sqliteTable(
 	(t) => [
 		index('set_logs_session_idx').on(t.sessionId),
 		index('set_logs_movement_logged_idx').on(t.movementId, t.loggedAt),
-		uniqueIndex('set_logs_slot_unq').on(t.sessionId, t.exerciseIndex, t.setIndex, t.slot)
+		uniqueIndex('set_logs_slot_unq').on(t.sessionId, t.exerciseIndex, t.warmup, t.setIndex, t.slot)
 	]
 );
 

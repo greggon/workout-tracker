@@ -7,6 +7,7 @@
 	import UnsavedDialog from '$lib/ui/UnsavedDialog.svelte';
 	import { UnsavedGuard } from '$lib/ui/unsaved.svelte';
 	import { TOOLS, TOOL_LABELS, type Tool } from '$lib/types';
+	import { MAX_WARMUPS, suggestWarmups, type Warmup } from '$lib/warmups';
 
 	type Movement = { movementId: string; name: string; tool: Tool; weight: number };
 	type Exercise = {
@@ -16,6 +17,7 @@
 		note: string;
 		main: Movement;
 		pair: Movement | null;
+		warmups: Warmup[];
 	};
 
 	type Props = {
@@ -50,6 +52,8 @@
 		sets: number;
 		reps: number;
 		note: string;
+		/** Warm-up sets for the main movement; empty until "Add warm-up sets". */
+		warmups: Warmup[];
 	};
 
 	function toRow(ex: Exercise): Row {
@@ -59,7 +63,8 @@
 			pair: ex.pair ? { name: ex.pair.name, tool: ex.pair.tool, weight: ex.pair.weight } : null,
 			sets: ex.sets,
 			reps: ex.reps,
-			note: ex.note
+			note: ex.note,
+			warmups: ex.warmups.map((w) => ({ ...w }))
 		};
 	}
 
@@ -107,9 +112,40 @@
 				pair: null,
 				sets: 2,
 				reps: 10,
-				note: ''
+				note: '',
+				warmups: []
 			}
 		];
+	}
+
+	/*
+	 * Warm-ups. Optional: an exercise has none until "Add warm-up sets", which
+	 * starts from the suggested ramp so there is something sensible to adjust.
+	 * The ramp never goes below the empty bar for the tool.
+	 */
+	function barFor(tool: Tool): number {
+		if (tool === 'barbell') return loading.barWeight;
+		if (tool === 'ezbar') return loading.ezBarWeight;
+		return 0;
+	}
+
+	function suggestFor(row: Row): Warmup[] {
+		const ramp = suggestWarmups(row.main.weight, barFor(row.main.tool));
+		// A working weight too light to ramp to still gets one row to fill in.
+		return ramp.length ? ramp : [{ weight: barFor(row.main.tool), reps: 5 }];
+	}
+
+	function addWarmups(i: number) {
+		rows[i].warmups = suggestFor(rows[i]);
+	}
+
+	function addWarmup(i: number) {
+		const list = rows[i].warmups;
+		const last = list[list.length - 1];
+		list.push({
+			weight: last ? last.weight : barFor(rows[i].main.tool),
+			reps: last ? last.reps : 5
+		});
 	}
 
 	function removeRow(i: number) {
@@ -329,10 +365,149 @@
 							placeholder="Myorep break, drop set…"
 						/>
 					</label>
-					<button type="button" class="btn btn-secondary pair-toggle" onclick={() => togglePair(i)}>
-						{row.pair ? 'Remove superset' : 'Make a superset'}
-					</button>
 				</div>
+
+				<input type="hidden" name="warmups-{i}" value={JSON.stringify(row.warmups)} />
+				{#if row.warmups.length}
+					<div class="warmups">
+						<div class="warmups-head">
+							<svg
+								class="flame"
+								width="18"
+								height="18"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.9"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<path
+									d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2.2 1.2-3.6 2.5-4.8.3 1.6 1.2 2.6 2.3 2.8C11.2 8.8 11 5.8 12 3Z"
+								/>
+							</svg>
+							<h3 class="warmups-title">Warm-up sets</h3>
+							<button
+								type="button"
+								class="btn btn-ghost suggest"
+								onclick={() => (row.warmups = suggestFor(row))}
+							>
+								Suggest
+							</button>
+							<button
+								type="button"
+								class="btn btn-icon"
+								aria-label="Remove all warm-up sets"
+								onclick={() => (row.warmups = [])}
+							>
+								<svg
+									width="20"
+									height="20"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.9"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+								>
+									<path
+										d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"
+									/>
+								</svg>
+							</button>
+						</div>
+						{#each row.warmups as warmup, w (w)}
+							<div class="warmup">
+								<span class="warmup-badge" aria-hidden="true">W{w + 1}</span>
+								<label class="warmup-field grow">
+									<span class="visually-hidden">Warm-up {w + 1} weight, in pounds</span>
+									<input
+										class="input num"
+										type="number"
+										inputmode="decimal"
+										step="0.5"
+										min="0"
+										bind:value={warmup.weight}
+									/>
+									<span class="unit" aria-hidden="true">lb</span>
+								</label>
+								<span class="times" aria-hidden="true">×</span>
+								<label class="warmup-field reps">
+									<span class="visually-hidden">Warm-up {w + 1} reps</span>
+									<input
+										class="input num"
+										type="number"
+										inputmode="numeric"
+										min="1"
+										bind:value={warmup.reps}
+									/>
+									<span class="unit" aria-hidden="true">reps</span>
+								</label>
+								<button
+									type="button"
+									class="btn btn-icon"
+									aria-label="Remove warm-up set {w + 1}"
+									onclick={() => row.warmups.splice(w, 1)}
+								>
+									<svg
+										width="18"
+										height="18"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										aria-hidden="true"
+									>
+										<path d="M6 6l12 12M18 6 6 18" />
+									</svg>
+								</button>
+							</div>
+						{/each}
+						{#if row.warmups.length < MAX_WARMUPS}
+							<button type="button" class="btn btn-ghost add-warmup" onclick={() => addWarmup(i)}>
+								<svg
+									width="18"
+									height="18"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.2"
+									stroke-linecap="round"
+									aria-hidden="true"
+								>
+									<path d="M12 5v14M5 12h14" />
+								</svg>
+								Add another
+							</button>
+						{/if}
+					</div>
+				{:else}
+					<button type="button" class="btn btn-secondary" onclick={() => addWarmups(i)}>
+						<svg
+							width="18"
+							height="18"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.9"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<path
+								d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2.2 1.2-3.6 2.5-4.8.3 1.6 1.2 2.6 2.3 2.8C11.2 8.8 11 5.8 12 3Z"
+							/>
+						</svg>
+						Add warm-up sets
+					</button>
+				{/if}
+
+				<button type="button" class="btn btn-secondary" onclick={() => togglePair(i)}>
+					{row.pair ? 'Remove superset' : 'Make a superset'}
+				</button>
 			</li>
 		{/each}
 	</ul>
@@ -428,8 +603,7 @@
 	}
 	.name,
 	.note,
-	.load,
-	.pair-toggle {
+	.load {
 		grid-column: 1 / -1;
 	}
 	/* Its own tinted block rather than a left rule: it is the second half of
@@ -472,8 +646,92 @@
 	.field {
 		min-width: 0;
 	}
-	.pair-toggle {
+	/*
+	 * Warm-ups: a light panel inside the exercise card, one row per set — its
+	 * number, weight, reps, and a remove. Only there once some are added.
+	 */
+	.warmups {
+		display: grid;
+		gap: 10px;
+		padding: 12px;
+		border-radius: var(--radius-md);
+		background: var(--md-surface);
+	}
+	.warmups-head {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin-block: -6px;
+	}
+	.flame {
+		flex: none;
+		color: var(--md-on-tertiary-container);
+	}
+	.warmups-title {
+		flex: 1;
+		margin: 0;
+		font-family: var(--font-body);
 		font-size: var(--text-md);
+		font-weight: 500;
+	}
+	.suggest {
+		flex: none;
+	}
+	.warmup {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+	.warmup-badge {
+		flex: none;
+		display: grid;
+		place-items: center;
+		width: 28px;
+		height: 28px;
+		border-radius: var(--radius-pill);
+		font-size: var(--text-sm);
+		font-weight: 600;
+		color: var(--md-on-tertiary-container);
+		background: var(--md-tertiary-container);
+	}
+	.warmup-field {
+		position: relative;
+		min-width: 0;
+	}
+	.warmup-field.grow {
+		flex: 1;
+	}
+	.warmup-field.reps {
+		flex: none;
+		width: 84px;
+	}
+	.warmup-field .input {
+		padding-right: 40px;
+		text-align: right;
+	}
+	.unit {
+		position: absolute;
+		right: 12px;
+		top: 50%;
+		transform: translateY(-50%);
+		font-size: var(--text-sm);
+		color: var(--md-on-surface-variant);
+		pointer-events: none;
+	}
+	.times {
+		flex: none;
+		color: var(--md-on-surface-variant);
+	}
+	.add-warmup {
+		justify-self: start;
+	}
+	.visually-hidden {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		white-space: nowrap;
 	}
 
 	.actions {
@@ -502,11 +760,10 @@
 			grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
 		}
 		.prescription {
-			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr) auto;
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr);
 		}
 		.name,
-		.note,
-		.pair-toggle {
+		.note {
 			grid-column: auto;
 		}
 		.actions {

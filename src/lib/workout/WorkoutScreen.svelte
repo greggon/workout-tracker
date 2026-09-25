@@ -10,6 +10,7 @@
 		clock,
 		movementsOf,
 		stepAfterLog,
+		warmupsOf,
 		WorkoutSession,
 		type Advance,
 		type Logged,
@@ -52,7 +53,8 @@
 			reps: ex.reps,
 			note: ex.note,
 			main: ex.main,
-			pair: ex.pair
+			pair: ex.pair,
+			warmups: ex.warmups
 		}))
 	);
 
@@ -200,6 +202,23 @@
 	function buildPayload(): SessionInput {
 		const logs: SessionInput['logs'] = [];
 		session.exercises.forEach((exercise, exerciseIndex) => {
+			// Warm-ups: the main movement, each at its own weight.
+			warmupsOf(exercise).forEach((warmup, i) => {
+				const reps = session.warmupReps(exerciseIndex, i);
+				if (reps == null) return;
+				logs.push({
+					dayExerciseId: exercise.id,
+					movementId: exercise.main.movementId,
+					exerciseIndex,
+					setIndex: i,
+					slot: 0,
+					warmup: true,
+					tool: exercise.main.tool,
+					weight: warmup.weight,
+					reps,
+					loggedAt: session.lastAt
+				});
+			});
 			movementsOf(exercise).forEach((movement, slot) => {
 				for (let setIndex = 0; setIndex < exercise.sets; setIndex++) {
 					const reps = session.reps(exerciseIndex, setIndex, slot);
@@ -473,6 +492,11 @@
 	const loggedVolume = $derived.by(() => {
 		let total = 0;
 		session.exercises.forEach((exercise, ei) => {
+			// Warm-ups are weight lifted too.
+			warmupsOf(exercise).forEach((warmup, i) => {
+				const reps = session.warmupReps(ei, i);
+				if (reps != null) total += setVolume({ ...exercise.main, weight: warmup.weight }, reps);
+			});
 			movementsOf(exercise).forEach((movement, slot) => {
 				for (let si = 0; si < exercise.sets; si++) {
 					const reps = session.reps(ei, si, slot);

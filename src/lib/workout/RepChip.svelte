@@ -22,11 +22,24 @@
 		label: string;
 		/** Six sets or more: smaller figures, to fit the row. */
 		dense?: boolean;
+		/** A warm-up set: logged, it takes a quieter fill than a working set. */
+		warmup?: boolean;
+		/** The set to do next: outlined, so the eye finds it. */
+		next?: boolean;
 		onchange: (reps: number | null, source: LogSource) => void;
 		/** A typed number is finished — the field closed with a value. */
 		oncommit?: () => void;
 	};
-	let { value, target, label, dense = false, onchange, oncommit }: Props = $props();
+	let {
+		value,
+		target,
+		label,
+		dense = false,
+		warmup = false,
+		next = false,
+		onchange,
+		oncommit
+	}: Props = $props();
 
 	const HOLD_MS = 450;
 	let holdTimer: ReturnType<typeof setTimeout> | null = null;
@@ -118,7 +131,9 @@
 		class="rep num"
 		class:dense
 		class:logged={value != null}
-		class:under={value != null && value < target}
+		class:under={value != null && value < target && !warmup}
+		class:warmup={value != null && warmup}
+		class:next={value == null && next}
 		onpointerdown={press}
 		onpointerup={release}
 		onpointerleave={release}
@@ -162,6 +177,16 @@
 		border-color: transparent;
 		color: var(--md-on-primary);
 		background: var(--md-primary);
+	}
+	/* A logged warm-up: lilac, never the working sets' solid purple. */
+	.rep.warmup {
+		color: var(--md-on-secondary-container);
+		background: var(--md-secondary-container);
+	}
+	/* The set to do next. */
+	.rep.next {
+		border: 2px solid var(--md-primary);
+		color: var(--md-on-surface);
 	}
 	/* Short of it: a different color, so a missed rep reads at a glance. */
 	.rep.under {

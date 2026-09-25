@@ -20,6 +20,11 @@ export type SetLogInput = {
 	reps: number;
 	/** Epoch milliseconds. */
 	loggedAt: number;
+	/**
+	 * A warm-up set; `setIndex` then numbers it among the warm-ups. Absent
+	 * from payloads queued before warm-ups existed, which had none.
+	 */
+	warmup?: boolean;
 };
 
 export type SessionInput = {
@@ -113,10 +118,14 @@ export function parseSessionPayload(body: unknown): ParseResult {
 			return { ok: false, error: `Log ${i} has an invalid weight` };
 		}
 		if (!isTimestamp(log.loggedAt)) return { ok: false, error: `Log ${i} has no timestamp` };
+		if (log.warmup !== undefined && typeof log.warmup !== 'boolean') {
+			return { ok: false, error: `Log ${i} has an invalid warm-up flag` };
+		}
+		const warmup = log.warmup === true;
 
 		// The database enforces this too, but a duplicate slot means the client
 		// built the payload wrong and the whole session is suspect.
-		const slot = `${log.exerciseIndex}|${log.setIndex}|${log.slot}`;
+		const slot = `${log.exerciseIndex}|${warmup ? 'w' : ''}${log.setIndex}|${log.slot}`;
 		if (seen.has(slot)) return { ok: false, error: `Log ${i} repeats slot ${slot}` };
 		seen.add(slot);
 
@@ -129,7 +138,8 @@ export function parseSessionPayload(body: unknown): ParseResult {
 			tool: log.tool as Tool,
 			weight: log.weight,
 			reps: log.reps,
-			loggedAt: log.loggedAt
+			loggedAt: log.loggedAt,
+			...(warmup ? { warmup: true } : {})
 		});
 	}
 

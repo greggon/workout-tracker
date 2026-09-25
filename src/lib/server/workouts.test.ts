@@ -2,6 +2,10 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createDb, type Db } from './db/client';
 import { dayExercises, days, movements, sessions, setLogs, users } from './db/schema';
+import { eq } from 'drizzle-orm';
+import { parseSessionPayload } from '$lib/session-payload';
+import { movementHistory } from './history';
+import { lastLogPerMovement } from './routine';
 import { saveSession } from './sessions';
 import {
 	listWorkouts,
@@ -182,5 +186,118 @@ describe('saveWorkoutEdits', () => {
 		const id = logWorkout();
 		saveWorkoutEdits(db, userId, id, edits([8, 8, 8], [8, 8, 8]));
 		expect(db.select().from(sessions).get()).toMatchObject({ id, durationMins: 45 });
+	});
+});
+
+describe('warm-up sets', () => {
+	/** Deadlift-style: two warm-ups on the bench, then the working sets. */
+	function logWithWarmups() {
+		db.update(dayExercises)
+			.set({
+				warmups: [
+					{ weight: 45, reps: 5 },
+					{ weight: 95, reps: 3 }
+				]
+			})
+			.where(eq(dayExercises.id, exerciseId))
+			.run();
+		const id = crypto.randomUUID();
+		const base = {
+			dayExerciseId: exerciseId,
+			movementId: benchId,
+			exerciseIndex: 0,
+			slot: 0,
+			tool: 'barbell' as const
+		};
+		saveSession(db, userId, {
+			id,
+			dayId,
+			startedAt: START,
+			endedAt: START + 45 * 60_000,
+			logs: [
+				{ ...base, setIndex: 0, warmup: true, weight: 45, reps: 5, loggedAt: START + 60_000 },
+				{ ...base, setIndex: 0, weight: 115, reps: 8, loggedAt: START + 120_000 }
+			]
+		});
+		return id;
+	}
+
+	it('are accepted in a payload beside a working set with the same number', () => {
+		const log = {
+			dayExerciseId: null,
+			movementId: benchId,
+			exerciseIndex: 0,
+			setIndex: 0,
+			slot: 0,
+			tool: 'barbell',
+			weight: 45,
+			reps: 5,
+			loggedAt: START
+		};
+		const body = { id: 'x', dayId, startedAt: START, endedAt: START + 1000 };
+		expect(parseSessionPayload({ ...body, logs: [{ ...log, warmup: true }, log] }).ok).toBe(true);
+		expect(parseSessionPayload({ ...body, logs: [log, log] }).ok).toBe(false);
+		expect(parseSessionPayload({ ...body, logs: [{ ...log, warmup: 'yes' }] }).ok).toBe(false);
+	});
+
+	it('are stored, flagged, and counted in the workout’s volume', () => {
+		const id = logWithWarmups();
+		expect(
+			db
+				.select()
+				.from(setLogs)
+				.all()
+				.filter((l) => l.warmup)
+		).toHaveLength(1);
+		const [row] = listWorkouts(db, userId).filter((w) => w.id === id);
+		expect(row.setCount).toBe(2);
+		expect(row.volume).toBe(45 * 5 + 115 * 8);
+	});
+
+	it('are left out of "last time" and a lift’s set count, but not its volume', () => {
+		logWithWarmups();
+		expect(lastLogPerMovement(db, userId, [benchId]).get(benchId)).toMatchObject({
+			weight: 115,
+			reps: 8
+		});
+		const [entry] = movementHistory(db, userId, benchId)!.entries;
+		expect(entry).toMatchObject({ sets: 1, topSet: 8, weight: 115 });
+		expect(entry.volume).toBe(45 * 5 + 115 * 8);
+	});
+
+	it('show in a past workout, with a prescribed one never logged ready to fill in', () => {
+		const id = logWithWarmups();
+		const [ex] = workoutDetail(db, userId, id)!.exercises;
+		expect(ex.warmups).toEqual([
+			{ weight: 45, reps: 5, target: 5 },
+			{ weight: 95, reps: null, target: 3 }
+		]);
+		expect(ex.slots[0].reps[0]).toBe(8);
+	});
+
+	it('can be corrected in a past workout: one changed, one filled in', () => {
+		const id = logWithWarmups();
+		saveWorkoutEdits(db, userId, id, {
+			exercises: [
+				{
+					exerciseIndex: 0,
+					slots: [{ slot: 0, weight: 115, reps: [8, null, null] }],
+					warmups: [4, 3]
+				}
+			]
+		});
+		const [ex] = workoutDetail(db, userId, id)!.exercises;
+		expect(ex.warmups.map((w) => w.reps)).toEqual([4, 3]);
+		expect(ex.warmups[1].weight).toBe(95);
+		expect(ex.slots[0].reps[0]).toBe(8);
+	});
+
+	it('refuses more warm-ups than the workout has', () => {
+		const id = logWithWarmups();
+		expect(() =>
+			saveWorkoutEdits(db, userId, id, {
+				exercises: [{ exerciseIndex: 0, slots: [], warmups: [5, 5, 5] }]
+			})
+		).toThrow(/warm-up/);
 	});
 });

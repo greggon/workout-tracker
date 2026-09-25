@@ -113,6 +113,7 @@ export function saveSession(db: Db, userId: string, input: SessionInput): SaveOu
 					tool: log.tool,
 					weight: log.weight,
 					reps: log.reps,
+					warmup: log.warmup ?? false,
 					loggedAt: new Date(log.loggedAt)
 				}))
 			)

@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/sqlite-core';
 import type { DayKey, Tool } from '$lib/types';
+import type { Warmup } from '$lib/warmups';
 import { setVolume } from '$lib/volume';
 import type { Db } from './db/client';
 import { dayExercises, days, movements, sessions, setLogs } from './db/schema';
@@ -31,6 +32,8 @@ export type RoutineExercise = {
 	main: RoutineMovement;
 	/** Present when this exercise is a superset. */
 	pair: RoutineMovement | null;
+	/** Warm-up sets for the main movement, lightest first; usually none. */
+	warmups: Warmup[];
 };
 
 export type RoutineDay = {
@@ -67,7 +70,8 @@ export function listDays(db: Db, userId: string): RoutineDay[] {
 			pairMovementId: dayExercises.pairMovementId,
 			pairName: pairMovements.name,
 			pairTool: dayExercises.pairTool,
-			pairWeight: dayExercises.pairWeight
+			pairWeight: dayExercises.pairWeight,
+			warmups: dayExercises.warmups
 		})
 		.from(dayExercises)
 		.innerJoin(movements, eq(movements.id, dayExercises.movementId))
@@ -103,7 +107,8 @@ export function listDays(db: Db, userId: string): RoutineDay[] {
 							tool: row.pairTool,
 							weight: row.pairWeight
 						}
-					: null
+					: null,
+			warmups: row.warmups ?? []
 		});
 	}
 
@@ -241,7 +246,15 @@ export function lastLogPerMovement(
 			})
 			.from(setLogs)
 			.innerJoin(sessions, eq(sessions.id, setLogs.sessionId))
-			.where(and(eq(sessions.userId, userId), eq(setLogs.movementId, movementId)))
+			// A working set: "last time" means the weight you trained at, not
+			// the warm-up on the way to it.
+			.where(
+				and(
+					eq(sessions.userId, userId),
+					eq(setLogs.movementId, movementId),
+					eq(setLogs.warmup, false)
+				)
+			)
 			.orderBy(desc(setLogs.loggedAt))
 			.limit(1)
 			.get();

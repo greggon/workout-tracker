@@ -82,6 +82,9 @@ export type WorkoutSlot = {
 	reps: (number | null)[];
 };
 
+/** A warm-up set: its own weight, and reps (null when it was not logged). */
+export type WorkoutWarmup = { weight: number; reps: number | null; target: number };
+
 export type WorkoutExercise = {
 	exerciseIndex: number;
 	dayExerciseId: string | null;
@@ -89,6 +92,8 @@ export type WorkoutExercise = {
 	target: number | null;
 	sets: number;
 	slots: WorkoutSlot[];
+	/** Logged warm-ups, plus any the routine prescribes that were not. */
+	warmups: WorkoutWarmup[];
 };
 
 export type WorkoutDetail = {
@@ -126,7 +131,8 @@ export function workoutDetail(db: Db, userId: string, sessionId: string): Workou
 			tool: setLogs.tool,
 			weight: setLogs.weight,
 			reps: setLogs.reps,
-			dayExerciseId: setLogs.dayExerciseId
+			dayExerciseId: setLogs.dayExerciseId,
+			warmup: setLogs.warmup
 		})
 		.from(setLogs)
 		.innerJoin(movements, eq(movements.id, setLogs.movementId))
@@ -137,7 +143,12 @@ export function workoutDetail(db: Db, userId: string, sessionId: string): Workou
 	const plans = new Map(
 		(planIds.length
 			? db
-					.select({ id: dayExercises.id, sets: dayExercises.sets, reps: dayExercises.reps })
+					.select({
+						id: dayExercises.id,
+						sets: dayExercises.sets,
+						reps: dayExercises.reps,
+						warmups: dayExercises.warmups
+					})
 					.from(dayExercises)
 					.where(inArray(dayExercises.id, planIds))
 					.all()
@@ -157,12 +168,16 @@ export function workoutDetail(db: Db, userId: string, sessionId: string): Workou
 		.map(([exerciseIndex, list]) => {
 			const dayExerciseId = list.find((l) => l.dayExerciseId)?.dayExerciseId ?? null;
 			const plan = dayExerciseId ? plans.get(dayExerciseId) : undefined;
-			const sets = Math.max(plan?.sets ?? 0, ...list.map((l) => l.setIndex + 1));
+			// Warm-ups are numbered on their own, so they are kept apart from the
+			// working sets they would otherwise collide with.
+			const working = list.filter((l) => !l.warmup);
+			const warm = list.filter((l) => l.warmup);
+			const sets = Math.max(plan?.sets ?? 0, ...working.map((l) => l.setIndex + 1), 0);
 
 			const slotNumbers = [...new Set(list.map((l) => l.slot))].sort((a, b) => a - b);
 			const slots = slotNumbers.map((slot) => {
-				const own = list.filter((l) => l.slot === slot);
-				const first = own[0];
+				const own = working.filter((l) => l.slot === slot);
+				const first = own[0] ?? list.find((l) => l.slot === slot)!;
 				const reps: (number | null)[] = Array.from({ length: sets }, () => null);
 				for (const l of own) reps[l.setIndex] = l.reps;
 				return {
@@ -171,17 +186,29 @@ export function workoutDetail(db: Db, userId: string, sessionId: string): Workou
 					name: first.name,
 					tool: first.tool,
 					// One weight per movement per workout — the heaviest, if they differ.
-					weight: Math.max(...own.map((l) => l.weight)),
+					weight: own.length ? Math.max(...own.map((l) => l.weight)) : first.weight,
 					reps
+				};
+			});
+
+			const planned = plan?.warmups ?? [];
+			const warmupCount = Math.max(planned.length, ...warm.map((l) => l.setIndex + 1), 0);
+			const warmups: WorkoutWarmup[] = Array.from({ length: warmupCount }, (_, i) => {
+				const logged = warm.find((l) => l.setIndex === i);
+				return {
+					weight: logged?.weight ?? planned[i]?.weight ?? 0,
+					reps: logged?.reps ?? null,
+					target: planned[i]?.reps ?? logged?.reps ?? 5
 				};
 			});
 
 			return {
 				exerciseIndex,
 				dayExerciseId,
-				target: plan?.reps ?? Math.max(...list.map((l) => l.reps)),
+				target: plan?.reps ?? Math.max(...working.map((l) => l.reps), 1),
 				sets,
-				slots
+				slots,
+				warmups
 			};
 		});
 
@@ -200,6 +227,8 @@ export type WorkoutEdits = {
 	exercises: {
 		exerciseIndex: number;
 		slots: { slot: number; weight: number; reps: (number | null)[] }[];
+		/** Reps per warm-up set, null to clear one. Their weights are not edited. */
+		warmups?: (number | null)[];
 	}[];
 };
 
@@ -235,6 +264,15 @@ export function parseWorkoutEdits(raw: unknown, detail: WorkoutDetail): WorkoutE
 				if (!Number.isInteger(r) || r < 0 || r > MAX_REPS) fail('Invalid reps');
 			}
 		}
+		if (ex.warmups !== undefined) {
+			if (!Array.isArray(ex.warmups) || ex.warmups.length > known!.warmups.length) {
+				fail('Too many warm-up sets');
+			}
+			for (const r of ex.warmups) {
+				if (r === null) continue;
+				if (!Number.isInteger(r) || r < 0 || r > MAX_REPS) fail('Invalid reps');
+			}
+		}
 	}
 	return edits;
 }
@@ -253,8 +291,10 @@ export function saveWorkoutEdits(db: Db, userId: string, sessionId: string, raw:
 
 	db.transaction((tx) => {
 		const existing = tx.select().from(setLogs).where(eq(setLogs.sessionId, sessionId)).all();
-		const find = (e: number, set: number, slot: number) =>
-			existing.find((l) => l.exerciseIndex === e && l.setIndex === set && l.slot === slot);
+		const find = (e: number, set: number, slot: number, warmup = false) =>
+			existing.find(
+				(l) => l.exerciseIndex === e && l.setIndex === set && l.slot === slot && l.warmup === warmup
+			);
 
 		for (const ex of edits.exercises) {
 			const known = detail.exercises.find((e) => e.exerciseIndex === ex.exerciseIndex)!;
@@ -285,6 +325,33 @@ export function saveWorkoutEdits(db: Db, userId: string, sessionId: string, raw:
 					}
 				});
 			}
+
+			// Warm-ups: the main movement, each at its own weight.
+			const main = known.slots.find((k) => k.slot === 0) ?? known.slots[0];
+			(ex.warmups ?? []).forEach((reps, i) => {
+				const row = find(ex.exerciseIndex, i, 0, true);
+				if (reps === null) {
+					if (row) tx.delete(setLogs).where(eq(setLogs.id, row.id)).run();
+				} else if (row) {
+					tx.update(setLogs).set({ reps }).where(eq(setLogs.id, row.id)).run();
+				} else if (main) {
+					tx.insert(setLogs)
+						.values({
+							sessionId,
+							dayExerciseId: known.dayExerciseId,
+							movementId: main.movementId,
+							exerciseIndex: ex.exerciseIndex,
+							setIndex: i,
+							slot: 0,
+							warmup: true,
+							tool: main.tool,
+							weight: known.warmups[i].weight,
+							reps,
+							loggedAt: session.endedAt
+						})
+						.run();
+				}
+			});
 		}
 
 		const left = tx

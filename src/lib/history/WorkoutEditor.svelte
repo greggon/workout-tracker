@@ -36,6 +36,7 @@
 			exerciseIndex: ex.exerciseIndex,
 			target: ex.target ?? 10,
 			sets: ex.sets,
+			warmups: ex.warmups.map((w) => ({ ...w })),
 			slots: ex.slots.map((s): SlotState => ({
 				slot: s.slot,
 				name: s.name,
@@ -49,7 +50,8 @@
 	const edits = $derived({
 		exercises: exercises.map((ex) => ({
 			exerciseIndex: ex.exerciseIndex,
-			slots: ex.slots.map((s) => ({ slot: s.slot, weight: s.weight, reps: s.reps }))
+			slots: ex.slots.map((s) => ({ slot: s.slot, weight: s.weight, reps: s.reps })),
+			warmups: ex.warmups.map((w) => w.reps)
 		}))
 	});
 	// svelte-ignore state_referenced_locally
@@ -60,7 +62,11 @@
 		exercises.every((ex) => ex.slots.every((s) => Number.isFinite(s.weight) && s.weight >= 0))
 	);
 	const anySet = $derived(
-		exercises.some((ex) => ex.slots.some((s) => s.reps.some((r) => r != null)))
+		exercises.some(
+			(ex) =>
+				ex.slots.some((s) => s.reps.some((r) => r != null)) ||
+				ex.warmups.some((w) => w.reps != null)
+		)
 	);
 
 	/** The workout's volume as edited, so a correction shows its effect. */
@@ -68,6 +74,14 @@
 		exercises.reduce(
 			(sum, ex) =>
 				sum +
+				// Warm-ups count: the main movement, at each warm-up's weight.
+				ex.warmups.reduce(
+					(n, w) =>
+						w.reps == null || !ex.slots[0]
+							? n
+							: n + setVolume({ tool: ex.slots[0].tool, weight: w.weight }, w.reps),
+					0
+				) +
 				ex.slots.reduce(
 					(n, s) =>
 						n +
@@ -132,6 +146,26 @@
 					{ex.slots.map((s) => s.name).join('  →  ')}
 					<span class="ex-meta num">{ex.sets} × {ex.target}</span>
 				</h2>
+				{#if ex.warmups.length}
+					<div class="warmups">
+						<span class="row-label">Warm-up</span>
+						<div class="rep-row" class:dense={ex.warmups.length > 5}>
+							{#each ex.warmups as w, i (i)}
+								<span class="warm-chip">
+									<RepChip
+										value={w.reps}
+										target={w.target}
+										label="{ex.slots[0]?.name ?? 'Warm-up'}, warm-up {i + 1} at {w.weight} lb"
+										dense={ex.warmups.length > 5}
+										warmup
+										onchange={(value) => (w.reps = value)}
+									/>
+									<span class="warm-weight num" aria-hidden="true">{w.weight}</span>
+								</span>
+							{/each}
+						</div>
+					</div>
+				{/if}
 				{#each ex.slots as s (s.slot)}
 					<div class="movement">
 						<div class="mv-head">
@@ -236,6 +270,38 @@
 		flex: none;
 		font-size: var(--text-sm);
 		font-weight: 400;
+		color: var(--md-on-surface-variant);
+	}
+
+	/* The warm-ups, before the working sets: each chip with its weight under
+	   it. Only their reps are edited here. */
+	.warmups {
+		display: flex;
+		align-items: flex-start;
+		gap: 8px;
+	}
+	.warmups .rep-row {
+		flex: 1;
+	}
+	.row-label {
+		flex: none;
+		width: 66px;
+		padding-top: 14px;
+		font-size: var(--text-sm);
+		font-weight: 500;
+		color: var(--md-on-tertiary-container);
+	}
+	.warm-chip {
+		flex: 0 1 52px;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+	}
+	.warm-weight {
+		font-size: var(--text-xs);
+		font-weight: 500;
+		text-align: center;
 		color: var(--md-on-surface-variant);
 	}
 

@@ -373,3 +373,25 @@ describe('the movement catalog during one save', () => {
 		expect(db.select().from(movements).all()).toHaveLength(1);
 	});
 });
+
+describe('warm-up sets in the routine', () => {
+	it('are saved with the exercise and read back, lightest first', () => {
+		setSplit(db, userId, 2);
+		const [day] = listDays(db, userId);
+		const warmups = [
+			{ weight: 135, reps: 5 },
+			{ weight: 185, reps: 3 },
+			{ weight: 205, reps: 1 }
+		];
+		saveDay(db, userId, day.id, 'Lower', [exercise({ name: 'Deadlift', weight: 225, warmups })]);
+		const saved = listDays(db, userId).find((d) => d.id === day.id)!;
+		expect(saved.exercises[0].warmups).toEqual(warmups);
+	});
+
+	it('default to none', () => {
+		setSplit(db, userId, 2);
+		const [day] = listDays(db, userId);
+		saveDay(db, userId, day.id, 'Lower', [exercise()]);
+		expect(listDays(db, userId).find((d) => d.id === day.id)!.exercises[0].warmups).toEqual([]);
+	});
+});

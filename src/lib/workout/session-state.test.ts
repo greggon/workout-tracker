@@ -7,6 +7,7 @@ import {
 	slotKey,
 	stepAfterLog,
 	tapReps,
+	warmupKey,
 	WorkoutSession,
 	type SessionExercise
 } from './session.svelte';
@@ -490,5 +491,63 @@ describe('coming back to a workout after editing its day', () => {
 		const session = fresh();
 		session.adopt({ ...base, log: { '1|0|0': 12 } });
 		expect(session.log).toEqual({ '1|0|0': 12 });
+	});
+});
+
+describe('warm-up sets', () => {
+	/** The single ('b') exercise, with two warm-ups before its working sets. */
+	function withWarmups() {
+		const [superset, single] = exercises();
+		return new WorkoutSession([
+			superset,
+			{
+				...single,
+				warmups: [
+					{ weight: 45, reps: 5 },
+					{ weight: 75, reps: 3 }
+				]
+			}
+		]);
+	}
+
+	it('count toward the day’s sets and progress', () => {
+		const session = withWarmups();
+		expect(session.totalSlots).toBe(9);
+		session.logWarmup(1, 0, 5);
+		expect(session.loggedCount).toBe(1);
+		expect(session.warmupReps(1, 0)).toBe(5);
+		expect(session.warmupsLoggedIn(1)).toBe(1);
+	});
+
+	it('are optional: the working sets alone finish the exercise', () => {
+		const session = withWarmups();
+		completeExercise(session, 1);
+		expect(session.isExerciseDone(1)).toBe(true);
+		expect(session.loggedIn(1)).toBe(3);
+	});
+
+	it('come first when working out what to load next', () => {
+		const session = withWarmups();
+		expect(session.nextSet(1)).toEqual({ kind: 'warmup', index: 0, weight: 45 });
+		session.logWarmup(1, 0, 5);
+		session.logWarmup(1, 1, 3);
+		expect(session.nextSet(1)).toEqual({ kind: 'working', setIndex: 0, slot: 0 });
+		completeExercise(session, 1);
+		expect(session.nextSet(1)).toBeNull();
+	});
+
+	it('follow their exercise when a saved workout is matched to an edited day', () => {
+		const session = withWarmups();
+		session.adopt({
+			sessionId: 's',
+			startedAt: 1,
+			lastAt: 1,
+			active: 0,
+			// Saved with the exercises the other way round.
+			exerciseIds: ['b', 'a'],
+			log: { [warmupKey(0, 1)]: 3, [warmupKey(0, 5)]: 1 }
+		});
+		// Warm-up 2 moves with its exercise; one past the list is dropped.
+		expect(session.log).toEqual({ [warmupKey(1, 1)]: 3 });
 	});
 });

@@ -7,6 +7,7 @@ import { saveDay, type ExerciseInput } from '$lib/server/routine-edit';
 import { safeBack } from '$lib/back';
 import type { PageHeader } from '$lib/shell/page-header';
 import { TOOLS, type Tool } from '$lib/types';
+import { parseWarmups, type Warmup } from '$lib/warmups';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
@@ -70,6 +71,12 @@ export const actions: Actions = {
 			if (!name) continue; // a row cleared of its movement is a deletion
 			const tool = parseTool(form.get(`tool-${i}`), 'barbell');
 			const pairName = String(form.get(`pairName-${i}`) ?? '').trim();
+			let warmups: Warmup[];
+			try {
+				warmups = parseWarmups(form.get(`warmups-${i}`));
+			} catch (e) {
+				return fail(400, { message: `${name}: ${(e as Error).message}` });
+			}
 			exercises.push({
 				id: (form.get(`id-${i}`) as string) || null,
 				name,
@@ -80,7 +87,8 @@ export const actions: Actions = {
 				pairWeight: pairName ? Number(form.get(`pairWeight-${i}`) ?? 0) : null,
 				sets: Math.max(1, Number(form.get(`sets-${i}`) ?? 1)),
 				reps: Math.max(1, Number(form.get(`reps-${i}`) ?? 1)),
-				note: String(form.get(`note-${i}`) ?? '').trim()
+				note: String(form.get(`note-${i}`) ?? '').trim(),
+				warmups
 			});
 		}
 

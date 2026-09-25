@@ -8,6 +8,7 @@
 	import RepChip from './RepChip.svelte';
 	import {
 		movementsOf,
+		warmupsOf,
 		type LogSource,
 		type Logged,
 		type SessionExercise,
@@ -51,6 +52,27 @@
 	const open = $derived(session.active === index);
 	const loggedIn = $derived(session.loggedIn(index));
 	const slotCount = $derived(exercise.sets * movements.length);
+
+	/*
+	 * Warm-ups, when the exercise has any: a row of their own before the
+	 * working sets, each chip with its weight under it. Once all are logged
+	 * they fold into one line, which can be opened again to correct one.
+	 */
+	const warmups = $derived(warmupsOf(exercise));
+	const warmupsLogged = $derived(session.warmupsLoggedIn(index));
+	const warmupsDone = $derived(warmups.length > 0 && warmupsLogged === warmups.length);
+	let warmupsOpen = $state(false);
+	/** The first set still to do; its weight is what the diagram shows. */
+	const next = $derived(session.nextSet(index));
+	const warmupSummary = $derived(
+		warmups.map((w, i) => `${formatWeight(w.weight)}×${session.warmupReps(index, i)}`).join(' · ')
+	);
+	/** Warm-up progress until the working sets start, then the working count. */
+	const countText = $derived(
+		warmups.length && loggedIn === 0 && !warmupsDone
+			? `${warmupsLogged}/${warmups.length} warm-up`
+			: `${loggedIn}/${slotCount}`
+	);
 	const setIndexes = $derived([...Array(exercise.sets).keys()]);
 
 	const title = $derived(movements.map((m) => m.name).join('  →  '));
@@ -66,7 +88,8 @@
 	const summary = $derived.by(() => {
 		if (open || loggedIn === 0) {
 			return (
-				`${paired ? 'Superset · ' : ''}${exercise.sets} × ${exercise.reps} · ` +
+				`${paired ? 'Superset · ' : ''}${warmups.length ? `${warmups.length} warm-up · ` : ''}` +
+				`${exercise.sets} × ${exercise.reps} · ` +
 				`${movements.map((m) => formatWeight(m.weight)).join(' / ')} lb · ` +
 				movements.map((m) => TOOL_SPEC[m.tool].label.toLowerCase()).join(' / ')
 			);
@@ -85,6 +108,12 @@
 		return `${formatWeight(last.weight)} × ${last.reps}, ${relativeDay(last.loggedAt)}`;
 	}
 
+	/** A warm-up never finishes an exercise, so it can never move the screen on. */
+	function recordWarmup(i: number, reps: number | null, source: LogSource) {
+		session.logWarmup(index, i, reps);
+		onLogged({ completed: false, source });
+	}
+
 	function record(setIndex: number, slot: number, reps: number | null, source: LogSource) {
 		const wasDone = session.isExerciseDone(index);
 		session.logSet(index, setIndex, slot, reps);
@@ -101,7 +130,7 @@
 			<span class="name">{title}</span>
 			<span class="summary num">{summary}</span>
 		</span>
-		<span class="count num">{loggedIn}/{slotCount}</span>
+		<span class="count num">{countText}</span>
 	</button>
 
 	{#if open}
@@ -119,6 +148,11 @@
 			{#each movements as movement, slot (slot)}
 				{@const load = loadingParts(movement.tool, movement.weight, config)}
 				{@const last = lastFor(movement.movementId)}
+				<!-- The diagram shows the weight to load now: the next warm-up's,
+				     until they are done. -->
+				{@const warming = slot === 0 && next?.kind === 'warmup'}
+				{@const loadWeight = warming && next?.kind === 'warmup' ? next.weight : movement.weight}
+				{@const nextLoad = loadingParts(movement.tool, loadWeight, config)}
 				<div class="movement">
 					<div class="mv-head">
 						{#if paired}
@@ -150,23 +184,110 @@
 								{load.total}{load.note ? ` · ${load.note}` : ''}{last ? ` · Last ${last}` : ''}
 							</span>
 						</div>
-						<span class="art">
-							<PlateDiagram tool={movement.tool} weight={movement.weight} {config} />
+						<span class="art" class:with-next={warmups.length > 0 && slot === 0}>
+							{#if warmups.length > 0 && slot === 0}
+								<span class="next-label num">Next · {nextLoad.total}</span>
+							{/if}
+							<PlateDiagram tool={movement.tool} weight={loadWeight} {config} />
+							{#if warmups.length > 0 && slot === 0 && nextLoad.note}
+								<span class="next-note num">{nextLoad.note}</span>
+							{/if}
 						</span>
 					</div>
 
-					<!-- One chip per set, all on one row. -->
-					<div class="rep-row" class:indented={paired} class:dense={exercise.sets > 5}>
-						{#each setIndexes as setIndex (setIndex)}
-							<RepChip
-								value={session.reps(index, setIndex, slot)}
-								target={exercise.reps}
-								label="{movement.name}, set {setIndex + 1}"
-								dense={exercise.sets > 5}
-								onchange={(reps, source) => record(setIndex, slot, reps, source)}
-								oncommit={onCommit}
-							/>
-						{/each}
+					{#if slot === 0 && warmups.length > 0}
+						{#if warmupsDone && !warmupsOpen}
+							<button
+								type="button"
+								class="warmups-done num"
+								aria-expanded="false"
+								onclick={() => (warmupsOpen = true)}
+							>
+								<svg
+									width="16"
+									height="16"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.6"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+								>
+									<path d="m5 13 5 5L20 7" />
+								</svg>
+								<span>Warm-up done · {warmupSummary}</span>
+								<svg
+									width="18"
+									height="18"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+								>
+									<path d="m6 9 6 6 6-6" />
+								</svg>
+							</button>
+						{:else}
+							<div class="labelled">
+								<span class="row-label">
+									<span class="row-name warm">Warm-up</span>
+									<span class="row-sub num">{warmupsLogged} of {warmups.length}</span>
+								</span>
+								<div class="rep-row" class:dense={warmups.length > 5}>
+									{#each warmups as warmup, w (w)}
+										<span class="warm-chip">
+											<RepChip
+												value={session.warmupReps(index, w)}
+												target={warmup.reps}
+												label="{movement.name}, warm-up {w + 1} at {formatWeight(warmup.weight)} lb"
+												dense={warmups.length > 5}
+												warmup
+												next={next?.kind === 'warmup' && next.index === w}
+												onchange={(reps, source) => recordWarmup(w, reps, source)}
+												oncommit={onCommit}
+											/>
+											<span class="warm-weight num" aria-hidden="true"
+												>{formatWeight(warmup.weight)}</span
+											>
+										</span>
+									{/each}
+								</div>
+							</div>
+						{/if}
+					{/if}
+
+					<!-- One chip per set, all on one row. With warm-ups, the rows are
+					     labelled so the two kinds of set cannot be confused. -->
+					<div class:labelled={warmups.length > 0}>
+						{#if warmups.length > 0}
+							<span class="row-label">
+								<span class="row-name">Working</span>
+								<span class="row-sub num">{formatWeight(movement.weight)} lb</span>
+							</span>
+						{/if}
+						<div
+							class="rep-row"
+							class:indented={paired && warmups.length === 0}
+							class:dense={exercise.sets > 5}
+						>
+							{#each setIndexes as setIndex (setIndex)}
+								<RepChip
+									value={session.reps(index, setIndex, slot)}
+									target={exercise.reps}
+									label="{movement.name}, set {setIndex + 1}"
+									dense={exercise.sets > 5}
+									next={next?.kind === 'working' &&
+										next.setIndex === setIndex &&
+										next.slot === slot}
+									onchange={(reps, source) => record(setIndex, slot, reps, source)}
+									oncommit={onCommit}
+								/>
+							{/each}
+						</div>
 					</div>
 				</div>
 			{/each}
@@ -334,6 +455,94 @@
 		flex: none;
 		display: block;
 		width: 104px;
+	}
+
+	/* Beside the name, with the weight it shows above it when warm-ups are in
+	   play — the diagram then follows the next set rather than the working one. */
+	.art.with-next {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+	}
+	.next-label {
+		font-size: var(--text-xs);
+		font-weight: 500;
+		color: var(--md-primary);
+	}
+	.next-note {
+		font-size: var(--text-xs);
+		color: var(--md-on-surface-variant);
+	}
+
+	/* A chip row with its label on the left: "Warm-up · 2 of 3", "Working · 225 lb". */
+	.labelled {
+		display: flex;
+		align-items: flex-start;
+		gap: 8px;
+		min-width: 0;
+	}
+	.labelled .rep-row {
+		flex: 1;
+	}
+	.row-label {
+		flex: none;
+		width: 66px;
+		display: flex;
+		flex-direction: column;
+		padding-top: 12px;
+	}
+	.row-name {
+		font-size: var(--text-sm);
+		font-weight: 500;
+	}
+	.row-name.warm {
+		color: var(--md-on-tertiary-container);
+	}
+	.row-sub {
+		font-size: var(--text-xs);
+		color: var(--md-on-surface-variant);
+	}
+	/* A warm-up chip with its weight under it. */
+	.warm-chip {
+		flex: 0 1 52px;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+	}
+	.warm-weight {
+		font-size: var(--text-xs);
+		font-weight: 500;
+		text-align: center;
+		color: var(--md-on-surface-variant);
+	}
+	/* The warm-ups, folded once done. Tapping opens them again. */
+	.warmups-done {
+		align-self: flex-start;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		max-width: 100%;
+		min-height: 40px;
+		padding: 0 12px;
+		border: 0;
+		border-radius: var(--radius-pill);
+		color: var(--md-on-secondary-container);
+		background: var(--md-secondary-container);
+		font: inherit;
+		font-size: var(--text-sm);
+		font-weight: 500;
+		text-align: left;
+		cursor: pointer;
+	}
+	.warmups-done span {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.warmups-done svg {
+		flex: none;
 	}
 
 	.visually-hidden {

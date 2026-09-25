@@ -1,4 +1,5 @@
 import type { Tool } from '$lib/types';
+import type { Warmup } from '$lib/warmups';
 
 /**
  * A workout in progress.
@@ -18,7 +19,14 @@ export type SessionExercise = {
 	note: string;
 	main: SessionMovement;
 	pair: SessionMovement | null;
+	/** Warm-up sets for the main movement, before the working sets. */
+	warmups?: Warmup[];
 };
+
+/** An exercise's warm-ups; none when it has no list. */
+export function warmupsOf(exercise: SessionExercise): Warmup[] {
+	return exercise.warmups ?? [];
+}
 
 /** Both halves of a superset, in logging order. */
 export function movementsOf(exercise: SessionExercise): SessionMovement[] {
@@ -29,6 +37,16 @@ export function movementsOf(exercise: SessionExercise): SessionMovement[] {
 export function slotKey(exerciseIndex: number, setIndex: number, slot: number): string {
 	return `${exerciseIndex}|${setIndex}|${slot}`;
 }
+
+/** A warm-up set's key: numbered among the warm-ups, always the main movement. */
+export function warmupKey(exerciseIndex: number, warmupIndex: number): string {
+	return `${exerciseIndex}|w${warmupIndex}`;
+}
+
+/** The set still to do first in an exercise: warm-ups, then working sets. */
+export type NextSet =
+	| { kind: 'warmup'; index: number; weight: number }
+	| { kind: 'working'; setIndex: number; slot: number };
 
 export class WorkoutSession {
 	/** Idempotency key for the eventual POST. */
@@ -61,8 +79,12 @@ export class WorkoutSession {
 	}
 
 	/** Every logging slot in the day: sets × movements. */
+	/** Every set in the day, warm-ups included — they count toward progress. */
 	get totalSlots(): number {
-		return this.exercises.reduce((n, ex) => n + ex.sets * movementsOf(ex).length, 0);
+		return this.exercises.reduce(
+			(n, ex) => n + ex.sets * movementsOf(ex).length + warmupsOf(ex).length,
+			0
+		);
 	}
 
 	get loggedCount(): number {
@@ -108,7 +130,40 @@ export class WorkoutSession {
 		return this.log[slotKey(exerciseIndex, setIndex, slot)];
 	}
 
-	/** True when every slot of this exercise carries a number. */
+	warmupReps(exerciseIndex: number, warmupIndex: number): number | undefined {
+		return this.log[warmupKey(exerciseIndex, warmupIndex)];
+	}
+
+	warmupsLoggedIn(exerciseIndex: number): number {
+		const exercise = this.exercises[exerciseIndex];
+		if (!exercise) return 0;
+		return warmupsOf(exercise).filter((_, i) => this.warmupReps(exerciseIndex, i) != null).length;
+	}
+
+	/** The first set of this exercise still to log, or null when all are. */
+	nextSet(exerciseIndex: number): NextSet | null {
+		const exercise = this.exercises[exerciseIndex];
+		if (!exercise) return null;
+		const warmups = warmupsOf(exercise);
+		for (let i = 0; i < warmups.length; i++) {
+			if (this.warmupReps(exerciseIndex, i) == null) {
+				return { kind: 'warmup', index: i, weight: warmups[i].weight };
+			}
+		}
+		const slots = movementsOf(exercise).length;
+		for (let s = 0; s < exercise.sets; s++) {
+			for (let m = 0; m < slots; m++) {
+				if (this.reps(exerciseIndex, s, m) == null)
+					return { kind: 'working', setIndex: s, slot: m };
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * True when every working set of this exercise carries a number. Warm-ups
+	 * are optional: skipping them does not hold the exercise open.
+	 */
 	isExerciseDone(exerciseIndex: number): boolean {
 		const exercise = this.exercises[exerciseIndex];
 		if (!exercise) return false;
@@ -140,9 +195,16 @@ export class WorkoutSession {
 	 * that the design has no way to express.
 	 */
 	logSet(exerciseIndex: number, setIndex: number, slot: number, reps: number | null): void {
+		this.write(slotKey(exerciseIndex, setIndex, slot), reps);
+	}
+
+	logWarmup(exerciseIndex: number, warmupIndex: number, reps: number | null): void {
+		this.write(warmupKey(exerciseIndex, warmupIndex), reps);
+	}
+
+	private write(key: string, reps: number | null): void {
 		// Logging a set is the clearest sign the break is over.
 		this.resume();
-		const key = slotKey(exerciseIndex, setIndex, slot);
 		const next = { ...this.log };
 		if (reps === null || !Number.isFinite(reps)) {
 			delete next[key];
@@ -213,10 +275,17 @@ export class WorkoutSession {
 		const log = (saved: Record<string, number>): Record<string, number> => {
 			const next: Record<string, number> = {};
 			for (const [key, reps] of Object.entries(saved)) {
-				const [oldIndex, setIndex, slot] = key.split('|').map(Number);
-				const newIndex = position(oldIndex);
+				const [oldPart, setPart, slotPart] = key.split('|');
+				const newIndex = position(Number(oldPart));
 				if (newIndex < 0) continue;
 				const exercise = this.exercises[newIndex];
+				if (setPart.startsWith('w')) {
+					const w = Number(setPart.slice(1));
+					if (w < warmupsOf(exercise).length) next[warmupKey(newIndex, w)] = reps;
+					continue;
+				}
+				const setIndex = Number(setPart);
+				const slot = Number(slotPart);
 				if (setIndex >= exercise.sets || slot >= movementsOf(exercise).length) continue;
 				next[slotKey(newIndex, setIndex, slot)] = reps;
 			}

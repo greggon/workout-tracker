@@ -1,4 +1,5 @@
 import { and, eq, inArray, isNull, or } from 'drizzle-orm';
+import type { Warmup } from '$lib/warmups';
 import { DAY_KEYS, MAX_SPLIT, MIN_SPLIT, type DayKey, type Tool } from '$lib/types';
 import type { Db, Queryable } from './db/client';
 import { dayExercises, days, movements } from './db/schema';
@@ -140,6 +141,8 @@ export type ExerciseInput = {
 	sets: number;
 	reps: number;
 	note: string;
+	/** Warm-up sets for the main movement; empty for none. */
+	warmups?: Warmup[];
 };
 
 /**
@@ -196,7 +199,8 @@ export function saveDay(
 				pairWeight: hasPair ? (ex.pairWeight ?? ex.weight) : null,
 				sets: ex.sets,
 				reps: ex.reps,
-				note: ex.note ?? ''
+				note: ex.note ?? '',
+				warmups: ex.warmups ?? []
 			};
 
 			if (ex.id && existing.includes(ex.id)) {
