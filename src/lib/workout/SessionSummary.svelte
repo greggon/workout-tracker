@@ -9,9 +9,11 @@
 		summary: SessionSummary;
 		/** Set when the session could not be stored, so the screen can say so. */
 		syncError?: string | null;
+		/** The "That's 3 Cybertrucks!" card's roll and start; see VolumeEquivalent. */
+		equivalent: { roll: number; since: number };
 	};
 
-	let { summary, syncError = null }: Props = $props();
+	let { summary, syncError = null, equivalent }: Props = $props();
 
 	const delta = $derived(
 		summary.previousVolume === null ? null : summary.volume - summary.previousVolume
@@ -114,7 +116,7 @@
 		{/each}
 	</ul>
 
-	<VolumeEquivalent volume={summary.volume} />
+	<VolumeEquivalent volume={summary.volume} roll={equivalent.roll} since={equivalent.since} />
 
 	<h2 class="section-label">
 		Volume · last {summary.history.length - 1}

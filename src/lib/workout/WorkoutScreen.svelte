@@ -281,6 +281,17 @@
 	}
 
 	/**
+	 * One roll for the "That's 3 Cybertrucks!" card, shared by both screens that
+	 * draw it — the on-device one and the server summary that replaces it — so
+	 * they name the same thing. Timed from the moment the workout finished.
+	 */
+	const equivalentRoll = Math.random();
+	const equivalent = $derived({
+		roll: equivalentRoll,
+		since: session.finishedAt ?? Date.now()
+	});
+
+	/**
 	 * The Finish button. With every set logged it finishes; with any left, it
 	 * asks first. The button sits right where a thumb lands when it misses a rep
 	 * chip, and finishing early is not something the screen can take back.
@@ -416,7 +427,7 @@
 	     workout ends and is not restarted when the server's answer arrives. -->
 	<Fireworks />
 	{#if summary}
-		<SessionSummary {summary} {syncError} />
+		<SessionSummary {summary} {syncError} {equivalent} />
 	{:else}
 		<section class="pending">
 			<div class="kicker">{day.key} day complete</div>
@@ -442,7 +453,7 @@
 					<div class="stat-value num">{session.loggedCount}</div>
 				</li>
 			</ul>
-			<VolumeEquivalent volume={loggedVolume} />
+			<VolumeEquivalent volume={loggedVolume} roll={equivalent.roll} since={equivalent.since} />
 			<div class="pending-actions">
 				<button class="btn btn-secondary" onclick={() => queue.drain()} disabled={saving}>
 					Try now

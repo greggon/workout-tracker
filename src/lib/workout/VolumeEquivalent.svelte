@@ -8,20 +8,36 @@
 	 * wobbles, and the count ticks up from zero to the real figure. With reduced
 	 * motion it simply appears, already at the final number.
 	 */
-	type Props = { volume: number };
-	let { volume }: Props = $props();
+	type Props = {
+		volume: number;
+		/**
+		 * The dice roll that picks the thing, in [0, 1). Rolled once per finished
+		 * workout by the caller, not here: the card is drawn twice — on the
+		 * "saved on this device" screen, then again when the server's summary
+		 * replaces it — and a roll of its own each time meant the two could name
+		 * different things.
+		 */
+		roll: number;
+		/**
+		 * When the celebration started (epoch ms). The animation is timed from
+		 * this rather than from mount, so the second copy of the card carries on
+		 * from wherever the first had got to instead of springing in and counting
+		 * up all over again.
+		 */
+		since: number;
+	};
+	let { volume, roll, since }: Props = $props();
 
-	/*
-	 * Drawn once per screen. The thing is random, but it must not change when
-	 * the component re-renders — say, when the server's summary replaces the
-	 * on-device numbers — so the dice are rolled here, once, and reused.
-	 */
-	const roll = Math.random();
 	const pick = $derived(pickEquivalent(volume, () => roll));
 
 	const DELAY_MS = 450;
 	const COUNT_MS = 900;
+	const WOBBLE_DELAY_MS = 900;
 	let shown = $state(0);
+
+	/** How far into the celebration this copy of the card first appeared. */
+	// svelte-ignore state_referenced_locally
+	const elapsed = Math.max(0, Date.now() - since);
 
 	$effect(() => {
 		if (!pick) return;
@@ -30,9 +46,9 @@
 			shown = target;
 			return;
 		}
-		shown = 0;
 		let frame = 0;
-		const start = performance.now() + DELAY_MS;
+		// Negative once the count-up is under way: it resumes part-way through.
+		const start = performance.now() + DELAY_MS - elapsed;
 		const step = (now: number) => {
 			const p = Math.min(1, Math.max(0, (now - start) / COUNT_MS));
 			// Fast at first, settling onto the number.
@@ -45,10 +61,13 @@
 </script>
 
 {#if pick}
-	<div class="equivalent">
+	<!-- Negative delays start each animation part-way through; see `since`. -->
+	<div class="equivalent" style:animation-delay="{DELAY_MS - elapsed}ms">
 		<!-- Read once, whole, rather than as a number ticking up. -->
 		<p class="visually-hidden">{equivalentMessage(pick)}</p>
-		<span class="emoji" aria-hidden="true">{pick.item.emoji}</span>
+		<span class="emoji" aria-hidden="true" style:animation-delay="{WOBBLE_DELAY_MS - elapsed}ms"
+			>{pick.item.emoji}</span
+		>
 		<p class="line" aria-hidden="true">
 			<span class="lead">That's</span>
 			<span class="big">
