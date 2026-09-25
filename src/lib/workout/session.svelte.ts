@@ -212,7 +212,7 @@ export type Logged = { completed: boolean; source: LogSource };
  * where the lifter has genuinely stopped typing.
  */
 export const ADVANCE_DELAY_MS: Record<LogSource, number> = {
-	tap: 1500,
+	tap: 800,
 	typed: 2500
 };
 

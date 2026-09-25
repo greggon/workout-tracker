@@ -364,7 +364,8 @@ describe('how long the screen waits before moving on', () => {
 		// The first tap on the last chip completes the exercise; a set that fell
 		// short is more taps on the same chip. Moving on before those land would
 		// yank the card away mid-correction.
-		expect(ADVANCE_DELAY_MS.tap).toBeGreaterThanOrEqual(1000);
+		// Quick taps land a few hundred ms apart.
+		expect(ADVANCE_DELAY_MS.tap).toBeGreaterThanOrEqual(700);
 		// …but a tap is still a finished gesture, unlike a number half typed.
 		expect(ADVANCE_DELAY_MS.tap).toBeLessThan(ADVANCE_DELAY_MS.typed);
 	});
